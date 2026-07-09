@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getSettingsApi, updateSettingsApi } from '../commonApi/api';
 import { Save } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 const Settings = () => {
   const [settings, setSettings] = useState({
@@ -39,10 +40,10 @@ const Settings = () => {
     try {
       setSaving(true);
       await updateSettingsApi(settings);
-      alert('Settings updated successfully!');
+      toast.success('Settings updated successfully!');
     } catch (error) {
       console.error('Error updating settings:', error);
-      alert('Failed to save settings.');
+      toast.error('Failed to save settings.');
     } finally {
       setSaving(false);
     }

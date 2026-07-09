@@ -14,6 +14,19 @@ api.interceptors.request.use((config) => {
   return Promise.reject(error);
 });
 
+api.interceptors.response.use((response) => {
+  return response;
+}, (error) => {
+  if (error.response && error.response.status === 401) {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    if (window.location.pathname !== '/login') {
+      window.location.href = '/login';
+    }
+  }
+  return Promise.reject(error);
+});
+
 // ==========================
 // AUTHENTICATION
 // ==========================
@@ -89,6 +102,13 @@ export const getProductsApi = async (params = {}) => {
 export const createProductApi = async (formData) => {
   // formData because we upload images via Multer
   const response = await api.post('/products', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return response.data;
+};
+
+export const updateProductApi = async (id, formData) => {
+  const response = await api.put(`/products/${id}`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
   return response.data;

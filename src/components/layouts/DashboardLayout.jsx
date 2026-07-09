@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import {
-  Home, Package, Bell, Settings, ChevronDown, Menu, Search, Mail,
-  Users, ShoppingCart, LogOut
+  Home, Package, Bell, Settings, Menu, Search, Mail,
+  Users, ShoppingCart, LogOut, FolderOpen
 } from 'lucide-react';
+
+import toast from 'react-hot-toast';
 
 const SidebarItem = ({ icon: Icon, label, to, badge, activeOverride, isOpen: isSidebarOpen, onClick }) => {
   const location = useLocation();
@@ -71,6 +73,7 @@ const DashboardLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 768);
 
   // Handle window resize to auto-close/open sidebar
@@ -87,23 +90,48 @@ const DashboardLayout = () => {
   }, []);
 
   useEffect(() => {
+    const token = localStorage.getItem('token');
     const userString = localStorage.getItem('user');
-    if (userString) {
-      setUser(JSON.parse(userString));
+    if (!token || !userString) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      navigate('/login');
     } else {
-      setUser({
-        first_name: 'Admin',
-        last_name: 'User',
-        role: 'Super Admin'
-      });
+      try {
+        setUser(JSON.parse(userString));
+        setLoading(false);
+      } catch (e) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        navigate('/login');
+      }
     }
-  }, []);
+  }, [navigate]);
+
+  if (loading) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-[#F8FAFC]">
+        <div className="animate-spin h-8 w-8 text-blue-600 rounded-full border-4 border-slate-200 border-t-blue-600"></div>
+      </div>
+    );
+  }
 
   const isSupplier = user?.role === 'SUPPLIER';
+
+  // Protect Admin-only routes from Suppliers
+  if (isSupplier && location.pathname === '/suppliers') {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  // Protect Supplier-only routes from Admins
+  if (!isSupplier && location.pathname === '/categories') {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    toast.success('Logged out successfully!');
     navigate('/login');
   };
 
@@ -129,7 +157,9 @@ const DashboardLayout = () => {
             </div>
             <div className={`transition-all duration-300 flex flex-col justify-center ${isSidebarOpen ? 'opacity-100 w-auto' : 'opacity-0 w-0 overflow-hidden'}`}>
               <h1 className="text-white font-bold text-[15px] tracking-wide leading-tight">KANNAN SILKS</h1>
-              <p className="text-[#5A7398] text-[10px] font-bold tracking-wider uppercase mt-0.5">Supplier Portal</p>
+              <p className="text-[#5A7398] text-[10px] font-bold tracking-wider uppercase mt-0.5">
+                {isSupplier ? 'Supplier Portal' : 'Admin Portal'}
+              </p>
             </div>
           </div>
         </div>
@@ -163,9 +193,14 @@ const DashboardLayout = () => {
 
             <SectionHeader title="Products & Catalog" isOpen={isSidebarOpen} />
             <SidebarItem icon={Package} label={isSupplier ? "My Products" : "Products"} to="/products" isOpen={isSidebarOpen} />
+            {isSupplier && (
+              <SidebarItem icon={FolderOpen} label="Categories" to="/categories" isOpen={isSidebarOpen} />
+            )}
 
             <SectionHeader title="Account" isOpen={isSidebarOpen} />
-            <SidebarItem icon={Users} label="Suppliers" to="/suppliers" isOpen={isSidebarOpen} />
+            {!isSupplier && (
+              <SidebarItem icon={Users} label="Suppliers" to="/suppliers" isOpen={isSidebarOpen} />
+            )}
             <SidebarItem icon={Settings} label="Settings" to="/settings" isOpen={isSidebarOpen} />
           </nav>
         </div>
@@ -223,13 +258,13 @@ const DashboardLayout = () => {
             </button>
             <div className="flex items-center border-l border-slate-200 pl-6 cursor-pointer">
               <img
-                src="https://ui-avatars.com/api/?name=Admin+User&background=0D8ABC&color=fff&rounded=true"
+                src={`https://ui-avatars.com/api/?name=${encodeURIComponent((user?.first_name || 'Admin') + ' ' + (user?.last_name || 'User'))}&background=0D8ABC&color=fff&rounded=true`}
                 alt="User"
                 className="h-9 w-9 rounded-full object-cover border-2 border-white shadow-sm"
               />
               <div className="ml-3 hidden sm:block">
                 <p className="text-sm font-bold text-slate-800 leading-none mb-1">{user?.first_name || 'Admin'} {user?.last_name || 'User'}</p>
-                <p className="text-xs text-slate-500 font-medium">{user?.role || 'Super Admin'}</p>
+                <p className="text-xs text-slate-500 font-medium">{user?.role === 'SUPPLIER' ? 'Supplier' : 'Admin'}</p>
               </div>
             </div>
           </div>
@@ -237,7 +272,7 @@ const DashboardLayout = () => {
 
         {/* Page Content */}
         <main className="flex-1 overflow-x-hidden overflow-y-auto bg-[#04274a03] p-8">
-          <div className="h-full">
+          <div className="min-h-full">
             <Outlet />
           </div>
         </main>

@@ -1,7 +1,7 @@
 import React from 'react';
 import { X } from 'lucide-react';
 
-const Modal = ({ isOpen, onClose, title, children }) => {
+const Modal = ({ isOpen, onClose, title, children, maxWidth = 'max-w-2xl' }) => {
   if (!isOpen) return null;
 
   return (
@@ -13,7 +13,7 @@ const Modal = ({ isOpen, onClose, title, children }) => {
       ></div>
 
       {/* Modal Dialog */}
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-xl z-10 overflow-hidden flex flex-col max-h-[90vh]">
+      <div className={`bg-white rounded-2xl shadow-xl w-full ${maxWidth} z-10 overflow-hidden flex flex-col max-h-[90vh]`}>
         <div className="flex justify-between items-center p-4 border-b border-slate-100">
           <h3 className="text-xl font-semibold text-slate-800">{title}</h3>
           <button

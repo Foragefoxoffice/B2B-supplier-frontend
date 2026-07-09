@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   Mail, Lock, EyeOff, Eye, ArrowRight,
@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { loginApi } from '../commonApi/api';
+import toast from 'react-hot-toast';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -14,6 +15,15 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
+
+  // Redirect to dashboard if already logged in
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    const userString = localStorage.getItem('user');
+    if (token && userString) {
+      navigate('/dashboard');
+    }
+  }, [navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -25,10 +35,13 @@ const Login = () => {
       if (data.success) {
         localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify(data.user));
+        toast.success('Logged in successfully!');
         navigate('/dashboard');
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Login failed. Please try again.');
+      const errMsg = err.response?.data?.message || 'Login failed. Please try again.';
+      setError(errMsg);
+      toast.error(errMsg);
     } finally {
       setLoading(false);
     }
@@ -258,7 +271,7 @@ const Login = () => {
                   </div>
                   <div>
                     <span className="font-bold text-slate-800 text-sm block mb-1">Kannan Silks</span>
-                    <span className="text-xs leading-relaxed text-slate-500 font-medium">No.2/40, Raja Veethi Road, Chinthamaniyuur,<br />Omalur (Via), Salem (Dt.) Pin - 636 455.</span>
+                    <span className="text-xs leading-relaxed text-slate-500 font-medium">No.2/40, Raja Veethi Road, Chinthamaniyur,<br />Omalur (Via), Salem (Dt.) Pin - 636 455.</span>
                   </div>
                 </div>
 

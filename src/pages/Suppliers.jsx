@@ -7,6 +7,7 @@ import {
   User2Icon
 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
+import toast from 'react-hot-toast';
 import { getSuppliersApi, createSupplierApi, deleteSupplierApi, updateSupplierApi } from '../commonApi/api';
 import Modal from '../components/ui/Modal';
 
@@ -22,6 +23,7 @@ const Suppliers = () => {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [status, setStatus] = useState('');
   const [city, setCity] = useState('');
   const [totalCount, setTotalCount] = useState(0);
@@ -36,20 +38,33 @@ const Suppliers = () => {
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm();
 
+  // Debounce search input to avoid hitting API on every keystroke
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [search]);
+
+  // Reset page when search term changes
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch]);
+
   useEffect(() => {
     fetchSuppliers();
-  }, [page, limit, status, city]);
+  }, [page, limit, debouncedSearch, status, city]);
 
   const handleSearch = (e) => {
     e.preventDefault();
     setPage(1);
-    fetchSuppliers();
+    setDebouncedSearch(search);
   };
 
   const fetchSuppliers = async () => {
     try {
       setLoading(true);
-      const data = await getSuppliersApi({ page, limit, search, status, city });
+      const data = await getSuppliersApi({ page, limit, search: debouncedSearch, status, city });
       if (data.success) {
         // Encriching with mock data for visual matching if some fields are missing from API
         const colors = [
@@ -129,8 +144,10 @@ const Suppliers = () => {
 
       if (editingSupplier) {
         await updateSupplierApi(editingSupplier.id, payload);
+        toast.success('Supplier updated successfully!');
       } else {
         await createSupplierApi(payload);
+        toast.success('Supplier created successfully!');
       }
       setIsModalOpen(false);
       setEditingSupplier(null);
@@ -138,7 +155,7 @@ const Suppliers = () => {
       fetchSuppliers(); // Refresh table
     } catch (error) {
       console.error('Error saving supplier:', error);
-      alert('Failed to save supplier.');
+      toast.error('Failed to save supplier.');
     } finally {
       setIsSubmitting(false);
     }
@@ -148,10 +165,11 @@ const Suppliers = () => {
     if (window.confirm('Are you sure you want to delete this supplier?')) {
       try {
         await deleteSupplierApi(id);
+        toast.success('Supplier deleted successfully!');
         fetchSuppliers();
       } catch (error) {
         console.error('Error deleting supplier:', error);
-        alert('Failed to delete supplier.');
+        toast.error('Failed to delete supplier.');
       }
     }
   };
