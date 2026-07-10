@@ -41,7 +41,7 @@ const StatCard = ({ title, value, icon: Icon, colorClass, bgColorClass, trend, t
             <Icon className="h-[22px] w-[22px]" />
           </div>
           <div>
-            <p className="text-[13px] font-semibold text-slate-400 tracking-wide uppercase">{title}</p>
+            <p className="text-[14px] font-semibold text-slate-500">{title}</p>
             <h3 className="text-2xl font-bold text-slate-800 leading-none mt-1.5">{value}</h3>
           </div>
         </div>

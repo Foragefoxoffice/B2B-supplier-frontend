@@ -135,8 +135,8 @@ export const getStatsApi = async () => {
 // ==========================
 // ORDERS
 // ==========================
-export const getOrdersApi = async () => {
-  const response = await api.get('/orders');
+export const getOrdersApi = async (params = {}) => {
+  const response = await api.get('/orders', { params });
   return response.data;
 };
 
@@ -162,5 +162,29 @@ export const updateSettingsApi = async (data) => {
   const response = await api.put('/settings', data);
   return response.data;
 };
+
+// ==========================
+// TRANSPORTERS
+// ==========================
+export const getTransportersApi = async (params = {}) => {
+  const response = await api.get('/transporters', { params });
+  return response.data;
+};
+
+export const createTransporterApi = async (data) => {
+  const response = await api.post('/transporters', data);
+  return response.data;
+};
+
+export const updateTransporterApi = async (id, data) => {
+  const response = await api.put(`/transporters/${id}`, data);
+  return response.data;
+};
+
+export const deleteTransporterApi = async (id) => {
+  const response = await api.delete(`/transporters/${id}`);
+  return response.data;
+};
+
 
 export default api;

@@ -2,9 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { NavLink, Outlet, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import {
   Home, Package, Bell, Settings, Menu, Search, Mail,
-  Users, ShoppingCart, LogOut, FolderOpen
+  Users, ShoppingCart, LogOut, FolderOpen, Truck, MapPin
 } from 'lucide-react';
-
+import { useCart } from '../../store/CartContext';
 import toast from 'react-hot-toast';
 
 const SidebarItem = ({ icon: Icon, label, to, badge, activeOverride, isOpen: isSidebarOpen, onClick }) => {
@@ -75,6 +75,7 @@ const DashboardLayout = () => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 768);
+  const { cartStats } = useCart();
 
   // Handle window resize to auto-close/open sidebar
   useEffect(() => {
@@ -190,11 +191,17 @@ const DashboardLayout = () => {
 
             <SectionHeader title="Orders" isOpen={isSidebarOpen} />
             <SidebarItem icon={ShoppingCart} label="Purchase Orders" to="/orders" isOpen={isSidebarOpen} />
+            {!isSupplier && (
+              <SidebarItem icon={MapPin} label="Order Tracking" to="/order-tracking" isOpen={isSidebarOpen} />
+            )}
 
             <SectionHeader title="Products & Catalog" isOpen={isSidebarOpen} />
             <SidebarItem icon={Package} label={isSupplier ? "My Products" : "Products"} to="/products" isOpen={isSidebarOpen} />
             {isSupplier && (
-              <SidebarItem icon={FolderOpen} label="Categories" to="/categories" isOpen={isSidebarOpen} />
+              <>
+                <SidebarItem icon={FolderOpen} label="Categories" to="/categories" isOpen={isSidebarOpen} />
+                <SidebarItem icon={Truck} label="Transporters" to="/transporters" isOpen={isSidebarOpen} />
+              </>
             )}
 
             <SectionHeader title="Account" isOpen={isSidebarOpen} />
@@ -248,13 +255,25 @@ const DashboardLayout = () => {
           </div>
 
           <div className="flex items-center space-x-6 ml-4 shrink-0">
-            <button className="text-slate-400 hover:text-blue-600 transition-colors relative">
-              <Bell className="h-5 w-5" />
-              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-blue-600 ring-2 ring-white text-[9px] font-bold text-white">8</span>
+            <button
+              id="cart-icon-nav"
+              className="text-slate-400 hover:text-blue-600 transition-colors relative cursor-pointer"
+              onClick={() => navigate('/cart')}
+            >
+              <ShoppingCart className="h-5 w-5" />
+              {cartStats?.totalItems > 0 && (
+                <span className="absolute -top-2 -right-2 flex h-4 w-4 items-center justify-center rounded-full bg-blue-600 ring-2 ring-white text-[9px] font-bold text-white">
+                  {cartStats.totalItems}
+                </span>
+              )}
             </button>
-            <button className="text-slate-400 hover:text-blue-600 transition-colors relative">
+            <button className="text-slate-400 hover:text-blue-600 transition-colors relative hidden sm:block">
+              <Bell className="h-5 w-5" />
+              <span className="absolute -top-2 -right-2 flex h-4 w-4 items-center justify-center rounded-full bg-blue-600 ring-2 ring-white text-[9px] font-bold text-white">8</span>
+            </button>
+            <button className="text-slate-400 hover:text-blue-600 transition-colors relative hidden sm:block">
               <Mail className="h-5 w-5" />
-              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-blue-600 ring-2 ring-white text-[9px] font-bold text-white">12</span>
+              <span className="absolute -top-2 -right-2 flex h-4 w-4 items-center justify-center rounded-full bg-blue-600 ring-2 ring-white text-[9px] font-bold text-white">12</span>
             </button>
             <div className="flex items-center border-l border-slate-200 pl-6 cursor-pointer">
               <img

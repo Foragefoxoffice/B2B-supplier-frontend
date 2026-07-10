@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { FolderTree, Plus, Edit2, Trash2 } from 'lucide-react';
+import { Plus, Edit2, Trash2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
+import ConfirmModal from '../components/common/ConfirmModal';
 import { getCategoriesApi, createCategoryApi, updateCategoryApi, deleteCategoryApi } from '../commonApi/api';
 import Modal from '../components/ui/Modal';
 
@@ -11,6 +12,8 @@ const Categories = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null);
+  const [deleteCategoryId, setDeleteCategoryId] = useState(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
@@ -71,23 +74,29 @@ const Categories = () => {
 
   const openEditModal = (category) => {
     setEditingCategory(category);
-    reset({ 
-      name: category.name, 
-      category_code: category.category_code || '' 
+    reset({
+      name: category.name,
+      category_code: category.category_code || ''
     });
     setIsModalOpen(true);
   };
 
-  const handleDelete = async (id) => {
-    if (window.confirm('Are you sure you want to delete this category?')) {
-      try {
-        await deleteCategoryApi(id);
-        toast.success('Category deleted successfully!');
-        fetchCategories();
-      } catch (error) {
-        console.error('Error deleting category:', error);
-        toast.error('Failed to delete category.');
-      }
+  const handleDelete = (id) => {
+    setDeleteCategoryId(id);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDelete = async () => {
+    try {
+      await deleteCategoryApi(deleteCategoryId);
+      toast.success('Category deleted successfully!');
+      fetchCategories();
+    } catch (error) {
+      console.error('Error deleting category:', error);
+      toast.error('Failed to delete category.');
+    } finally {
+      setShowDeleteConfirm(false);
+      setDeleteCategoryId(null);
     }
   };
 
@@ -104,7 +113,7 @@ const Categories = () => {
           <h2 className="text-2xl font-bold text-slate-800">Categories</h2>
           <p className="text-sm text-slate-500 mt-1">Organize your product hierarchy</p>
         </div>
-        <button 
+        <button
           onClick={openAddModal}
           className="flex items-center px-4 py-2 bg-active-btn text-white rounded-xl hover:opacity-90 transition-colors font-semibold shadow-sm cursor-pointer text-sm"
         >
@@ -122,10 +131,10 @@ const Categories = () => {
           ) : (
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b border-slate-100 bg-slate-50/50 text-slate-400 text-[11px] font-bold uppercase tracking-wider">
-                  <th className="py-4 px-6 font-semibold text-slate-500 w-44">Code</th>
-                  <th className="py-4 px-6 font-semibold text-slate-500">Category Name</th>
-                  <th className="py-4 px-6 text-right font-semibold text-slate-500 w-28">Actions</th>
+                <tr className="border-b border-slate-100 bg-slate-50/50 text-slate-600 text-sm font-semibold">
+                  <th className="py-4 px-6 font-semibold text-slate-600 w-44">Code</th>
+                  <th className="py-4 px-6 font-semibold text-slate-600">Category Name</th>
+                  <th className="py-4 px-6 text-right font-semibold text-slate-600 w-28">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -141,14 +150,14 @@ const Categories = () => {
                     </td>
                     <td className="py-4 px-6 text-right">
                       <div className="flex items-center justify-end gap-3">
-                        <button 
-                          onClick={() => openEditModal(category)} 
+                        <button
+                          onClick={() => openEditModal(category)}
                           className="text-slate-400 hover:text-slate-700 p-1.5 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
                           title="Edit Category"
                         >
                           <Edit2 className="h-4 w-4" />
                         </button>
-                        <button 
+                        <button
                           onClick={() => handleDelete(category.id)}
                           className="text-slate-400 hover:text-rose-600 p-1.5 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
                           title="Delete Category"
@@ -164,13 +173,12 @@ const Categories = () => {
           )}
         </div>
 
-        {/* Table Pagination Footer */}
         {!loading && totalItems > 0 && (
           <div className="flex flex-col sm:flex-row justify-between items-center px-6 py-4 border-t border-slate-100 gap-4 bg-slate-50/20 text-sm">
             <div className="text-slate-500 font-medium flex flex-wrap items-center gap-2">
               <span>Showing <span className="text-slate-800 font-bold">{startIndex + 1}</span> to{' '}
-              <span className="text-slate-800 font-bold">{Math.min(startIndex + itemsPerPage, totalItems)}</span> of{' '}
-              <span className="text-slate-800 font-bold">{totalItems}</span> categories</span>
+                <span className="text-slate-800 font-bold">{Math.min(startIndex + itemsPerPage, totalItems)}</span> of{' '}
+                <span className="text-slate-800 font-bold">{totalItems}</span> categories</span>
               <span className="text-slate-300">|</span>
               <div className="flex items-center gap-2">
                 <span className="text-slate-400 font-semibold text-xs uppercase tracking-wider">Show:</span>
@@ -198,18 +206,17 @@ const Categories = () => {
               >
                 Previous
               </button>
-              
+
               {Array.from({ length: totalPages }).map((_, idx) => {
                 const pageNum = idx + 1;
                 return (
                   <button
                     key={pageNum}
                     onClick={() => setCurrentPage(pageNum)}
-                    className={`relative inline-flex items-center justify-center h-8 w-8 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      currentPage === pageNum
-                        ? 'bg-active-btn text-white shadow-sm border-0'
-                        : 'border border-slate-200 bg-white hover:bg-slate-50 text-slate-600'
-                    }`}
+                    className={`relative inline-flex items-center justify-center h-8 w-8 rounded-lg text-xs font-bold transition-all cursor-pointer ${currentPage === pageNum
+                      ? 'bg-active-btn text-white shadow-sm border-0'
+                      : 'border border-slate-200 bg-white hover:bg-slate-50 text-slate-600'
+                      }`}
                   >
                     {pageNum}
                   </button>
@@ -232,34 +239,34 @@ const Categories = () => {
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
           <div>
             <label className="block text-sm font-semibold text-slate-700 mb-2">Category Code *</label>
-            <input 
-              {...register('category_code', { required: true })} 
-              className="w-full border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 transition-all text-slate-800 text-sm bg-slate-50 hover:bg-slate-100/50" 
-              placeholder="e.g. P530" 
+            <input
+              {...register('category_code', { required: true })}
+              className="w-full border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 transition-all text-slate-800 text-sm bg-slate-50 hover:bg-slate-100/50"
+              placeholder="e.g. P530"
             />
             {errors.category_code && <span className="text-red-500 text-xs mt-1 block">Category Code is required</span>}
           </div>
 
           <div>
             <label className="block text-sm font-semibold text-slate-700 mb-2">Category Name *</label>
-            <input 
-              {...register('name', { required: true })} 
-              className="w-full border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 transition-all text-slate-800 text-sm bg-slate-50 hover:bg-slate-100/50" 
-              placeholder="e.g. Multi Color Checkd" 
+            <input
+              {...register('name', { required: true })}
+              className="w-full border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 transition-all text-slate-800 text-sm bg-slate-50 hover:bg-slate-100/50"
+              placeholder="e.g. Multi Color Checkd"
             />
             {errors.name && <span className="text-red-500 text-xs mt-1 block">Category Name is required</span>}
           </div>
 
           <div className="pt-4 border-t border-slate-100 flex justify-end gap-3">
-            <button 
-              type="button" 
+            <button
+              type="button"
               onClick={() => setIsModalOpen(false)}
               className="px-5 py-2.5 border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition-colors font-semibold text-sm cursor-pointer"
             >
               Cancel
             </button>
-            <button 
-              type="submit" 
+            <button
+              type="submit"
               disabled={isSubmitting}
               className="px-5 py-2.5 bg-active-btn hover:opacity-90 text-white rounded-xl transition-all font-semibold text-sm disabled:opacity-50 cursor-pointer shadow-sm"
             >
@@ -268,6 +275,16 @@ const Categories = () => {
           </div>
         </form>
       </Modal>
+
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        title="Delete Category"
+        message="Are you sure you want to delete this category? This action cannot be undone."
+        onConfirm={confirmDelete}
+        onCancel={() => setShowDeleteConfirm(false)}
+        confirmText="Delete"
+        confirmVariant="danger"
+      />
     </div>
   );
 };

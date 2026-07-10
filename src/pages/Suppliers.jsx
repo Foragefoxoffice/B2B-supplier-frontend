@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
+import ConfirmModal from '../components/common/ConfirmModal';
 import { getSuppliersApi, createSupplierApi, deleteSupplierApi, updateSupplierApi } from '../commonApi/api';
 import Modal from '../components/ui/Modal';
 
@@ -28,6 +29,8 @@ const Suppliers = () => {
   const [city, setCity] = useState('');
   const [totalCount, setTotalCount] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
+  const [deleteSupplierId, setDeleteSupplierId] = useState(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const [dashboardStats, setDashboardStats] = useState({
     totalSuppliers: 0,
@@ -161,16 +164,22 @@ const Suppliers = () => {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (window.confirm('Are you sure you want to delete this supplier?')) {
-      try {
-        await deleteSupplierApi(id);
-        toast.success('Supplier deleted successfully!');
-        fetchSuppliers();
-      } catch (error) {
-        console.error('Error deleting supplier:', error);
-        toast.error('Failed to delete supplier.');
-      }
+  const handleDelete = (id) => {
+    setDeleteSupplierId(id);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDelete = async () => {
+    try {
+      await deleteSupplierApi(deleteSupplierId);
+      toast.success('Supplier deleted successfully!');
+      fetchSuppliers();
+    } catch (error) {
+      console.error('Error deleting supplier:', error);
+      toast.error('Failed to delete supplier.');
+    } finally {
+      setShowDeleteConfirm(false);
+      setDeleteSupplierId(null);
     }
   };
 
@@ -476,7 +485,6 @@ const Suppliers = () => {
                 </button>
 
                 {[...Array(totalPages)].map((_, i) => {
-                  // Only show a few pages around current page for clean UI
                   if (
                     totalPages <= 5 ||
                     i === 0 ||
@@ -497,7 +505,6 @@ const Suppliers = () => {
                     );
                   }
 
-                  // Add ellipsis
                   if (i === 1 && page > 3) {
                     return <span key={i} className="relative inline-flex items-center justify-center h-8 w-8 text-sm font-bold text-slate-400">...</span>;
                   }
@@ -520,6 +527,16 @@ const Suppliers = () => {
           </div>
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        title="Delete Supplier"
+        message="Are you sure you want to delete this supplier? This action cannot be undone."
+        onConfirm={confirmDelete}
+        onCancel={() => setShowDeleteConfirm(false)}
+        confirmText="Delete"
+        confirmVariant="danger"
+      />
 
       {/* Add / Edit Modal */}
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingSupplier ? "Edit Supplier" : "Add Supplier"}>

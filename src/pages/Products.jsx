@@ -1,15 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import {
-  UploadCloud, CheckCircle, XCircle, Trash2, Pencil, Eye,
+  CheckCircle, Trash2, Pencil, Eye,
   Search, Filter, Download, Plus, ChevronLeft, ChevronRight,
-  Package, AlertTriangle, Bell, FileText, ArrowUpRight, ArrowDownRight,
-  MoreVertical, Image, ShoppingCart, Building
+  Package, AlertTriangle, Bell, FileText, ArrowUpRight, ArrowDownRight, Image, Building
 } from 'lucide-react';
+import { useCart } from '../store/CartContext';
+import ConfirmModal from '../components/common/ConfirmModal';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import { getProductsApi, createProductApi, updateProductApi, approveProductApi, deleteProductApi, getSuppliersApi, getCategoriesApi, createOrderApi } from '../commonApi/api';
 import Modal from '../components/ui/Modal';
 import ProductGallery from './ProductGallery';
+import { getPaletteSync } from 'colorthief';
+import namer from 'color-namer';
 
 const resolveSingleColor = (colorName) => {
   if (!colorName) return '#CBD5E1';
@@ -67,13 +70,14 @@ const Products = () => {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [deleteProductId, setDeleteProductId] = useState(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [userRole, setUserRole] = useState(null);
   const [userSupplierId, setUserSupplierId] = useState(null);
 
   const [editingProduct, setEditingProduct] = useState(null);
-  const [selectedFiles, setSelectedFiles] = useState([]);
-  const [existingImages, setExistingImages] = useState([]);
+  const [productImages, setProductImages] = useState([]);
 
   const [viewingProductImagesProduct, setViewingProductImagesProduct] = useState(null);
   const [isViewImagesModalOpen, setIsViewImagesModalOpen] = useState(false);
@@ -196,49 +200,97 @@ const Products = () => {
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm();
 
-  const handleFileChange = (e) => {
+  const handleFileChange = async (e) => {
     if (e.target.files) {
-      const newFiles = Array.from(e.target.files).map(file => ({
-        file,
-        previewUrl: URL.createObjectURL(file),
-        color: '',
-        quantity: 0,
-        isNew: true
-      }));
-      setSelectedFiles(prev => [...prev, ...newFiles]);
+      const files = Array.from(e.target.files);
+
+      const newFilesPromises = files.map(file => {
+        return new Promise((resolve) => {
+          const previewUrl = URL.createObjectURL(file);
+          const img = new window.Image();
+          img.src = previewUrl;
+
+          img.onload = () => {
+            let colorName = '';
+            try {
+              const palette = getPaletteSync(img, { colorCount: 10, ignoreWhite: true });
+              if (palette && palette.length > 0) {
+                let bestColor = palette[0];
+                for (let c of palette) {
+                  const { r, g, b } = c.rgb();
+                  const max = Math.max(r, g, b);
+                  const min = Math.min(r, g, b);
+                  const saturation = max === 0 ? 0 : (max - min) / max;
+                  const brightness = (r + g + b) / (3 * 255);
+
+                  // Prefer colors with some saturation (not grey) and not too dark/bright
+                  if (saturation > 0.15 && brightness > 0.15 && brightness < 0.95) {
+                    bestColor = c;
+                    break;
+                  }
+                }
+                const { r, g, b } = bestColor.rgb();
+
+                const names = namer(`rgb(${r}, ${g}, ${b})`);
+                // Use the closest name from the NTC (Name That Color) list which has a huge variety
+                colorName = names.ntc[0].name;
+              }
+            } catch (err) {
+              console.error('Error detecting color:', err);
+            }
+
+            resolve({
+              file,
+              previewUrl,
+              color: colorName,
+              quantity: 0,
+              isNew: true
+            });
+          };
+
+          img.onerror = () => {
+            resolve({
+              file,
+              previewUrl,
+              color: '',
+              quantity: 0,
+              isNew: true
+            });
+          };
+        });
+      });
+
+      const newFiles = await Promise.all(newFilesPromises);
+      setProductImages(prev => [...prev, ...newFiles.map(f => ({ type: 'new', data: f }))]);
     }
   };
 
-  const handleExistingImageMetaChange = (id, field, value) => {
-    setExistingImages(prev => prev.map(img => {
-      if (img.id === id) {
-        return { ...img, [field]: field === 'quantity' ? parseInt(value) || 0 : value };
+  const handleImageMetaChange = (index, field, value) => {
+    setProductImages(prev => prev.map((img, i) => {
+      if (i === index) {
+        return { ...img, data: { ...img.data, [field]: field === 'quantity' ? parseInt(value) || 0 : value } };
       }
       return img;
     }));
   };
 
-  const handleNewFileMetaChange = (index, field, value) => {
-    setSelectedFiles(prev => prev.map((f, i) => {
-      if (i === index) {
-        return { ...f, [field]: field === 'quantity' ? parseInt(value) || 0 : value };
-      }
-      return f;
-    }));
+  const handleRemoveImage = (index) => {
+    setProductImages(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleRemoveExistingImage = (id) => {
-    setExistingImages(prev => prev.filter(img => img.id !== id));
-  };
-
-  const handleRemoveSelectedFile = (index) => {
-    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+  const makePrimaryImage = (index) => {
+    if (index === 0) return;
+    setProductImages(prev => {
+      const newImages = [...prev];
+      const [movedImage] = newImages.splice(index, 1);
+      newImages.unshift(movedImage);
+      return newImages;
+    });
   };
 
   const handleEditClick = (product) => {
     setEditingProduct(product);
-    setExistingImages(product.images || []);
-    setSelectedFiles([]);
+    setProductImages((product.images || []).map(img => ({ type: 'existing', data: img })));
     reset({
       name: product.name,
       product_code: product.product_code || '',
@@ -443,25 +495,24 @@ const Products = () => {
 
       const metadata = [];
 
-      // Existing images to keep (with their updated color & quantity)
-      existingImages.forEach(img => {
-        metadata.push({
-          id: img.id,
-          color: img.color || '',
-          quantity: img.quantity || 0,
-          isNew: false
-        });
-      });
-
-      // New files details
-      selectedFiles.forEach((f, idx) => {
-        formData.append('images', f.file);
-        metadata.push({
-          isNew: true,
-          fileIndex: idx,
-          color: f.color || '',
-          quantity: f.quantity || 0
-        });
+      let fileIndexCounter = 0;
+      productImages.forEach((img) => {
+        if (img.type === 'existing') {
+          metadata.push({
+            id: img.data.id,
+            color: img.data.color || '',
+            quantity: img.data.quantity || 0,
+            isNew: false
+          });
+        } else {
+          formData.append('images', img.data.file);
+          metadata.push({
+            isNew: true,
+            fileIndex: fileIndexCounter++,
+            color: img.data.color || '',
+            quantity: img.data.quantity || 0
+          });
+        }
       });
 
       formData.append('imagesMetadata', JSON.stringify(metadata));
@@ -476,8 +527,7 @@ const Products = () => {
 
       setIsModalOpen(false);
       reset();
-      setSelectedFiles([]);
-      setExistingImages([]);
+      setProductImages([]);
       setEditingProduct(null);
       fetchProducts();
     } catch (error) {
@@ -517,6 +567,7 @@ const Products = () => {
         const item = ordersArray[i];
         const payload = {
           product_id: product.id,
+          variant_id: item.variant.id,
           quantity: item.quantity,
           rate: product.price,
           remarks: `Color: ${item.variant.color || 'Default'}${customRemarks ? ` | Notes: ${customRemarks}` : ''}`
@@ -535,7 +586,6 @@ const Products = () => {
           await approveProductApi(product.id, 'APPROVED');
         }
         toast.success(`Successfully placed ${successCount} purchase orders for ${product.name}!`);
-        setSelectedProductForDetail(null);
         setVariantQuantities({});
         fetchProducts();
       } else {
@@ -552,16 +602,22 @@ const Products = () => {
 
 
 
-  const handleDelete = async (id) => {
-    if (window.confirm('Are you sure you want to delete this product?')) {
-      try {
-        await deleteProductApi(id);
-        toast.success('Product deleted successfully!');
-        fetchProducts();
-      } catch (error) {
-        console.error('Error deleting product:', error);
-        toast.error('Failed to delete product.');
-      }
+  const handleDelete = (id) => {
+    setDeleteProductId(id);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDelete = async () => {
+    try {
+      await deleteProductApi(deleteProductId);
+      toast.success('Product deleted successfully!');
+      fetchProducts();
+    } catch (error) {
+      console.error('Error deleting product:', error);
+      toast.error('Failed to delete product.');
+    } finally {
+      setShowDeleteConfirm(false);
+      setDeleteProductId(null);
     }
   };
 
@@ -613,8 +669,7 @@ const Products = () => {
                     material: ''
                   });
                   setEditingProduct(null);
-                  setSelectedFiles([]);
-                  setExistingImages([]);
+                  setProductImages([]);
                   setIsModalOpen(true);
                 }}
                 className="flex items-center px-4 py-2 bg-active-btn text-white rounded-xl hover:opacity-90 transition-colors font-medium shadow-sm cursor-pointer"
@@ -634,7 +689,7 @@ const Products = () => {
                   <Package className="w-5.5 h-5.5" />
                 </div>
                 <div>
-                  <span className="text-xs mb-2 font-semibold text-slate-400 uppercase tracking-wider block">Total Products</span>
+                  <span className="text-sm mb-2 font-semibold text-slate-500 block">Total Products</span>
                   <span className="text-2xl font-semibold text-slate-800">{stats.total}</span>
                 </div>
               </div>
@@ -652,7 +707,7 @@ const Products = () => {
                   <CheckCircle className="w-5.5 h-5.5" />
                 </div>
                 <div>
-                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-2">Active Products</span>
+                  <span className="text-sm mb-2 font-semibold text-slate-500 block">Active Products</span>
                   <span className="text-2xl font-semibold text-slate-800">{stats.active}</span>
                 </div>
               </div>
@@ -670,7 +725,7 @@ const Products = () => {
                   <AlertTriangle className="w-5.5 h-5.5" />
                 </div>
                 <div>
-                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-2">Out of Stock</span>
+                  <span className="text-sm mb-2 font-semibold text-slate-500 block">Out of Stock</span>
                   <span className="text-2xl font-semibold text-slate-800">{stats.outOfStock}</span>
                 </div>
               </div>
@@ -688,7 +743,7 @@ const Products = () => {
                   <Bell className="w-5.5 h-5.5" />
                 </div>
                 <div>
-                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-2">Low Stock</span>
+                  <span className="text-sm mb-2 font-semibold text-slate-500 block">Low Stock</span>
                   <span className="text-2xl font-semibold text-slate-800">{stats.lowStock}</span>
                 </div>
               </div>
@@ -706,7 +761,7 @@ const Products = () => {
                   <FileText className="w-5.5 h-5.5" />
                 </div>
                 <div>
-                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-2">Draft Products</span>
+                  <span className="text-sm mb-2 font-semibold text-slate-500 block">Draft Products</span>
                   <span className="text-2xl font-semibold text-slate-800">{stats.draft}</span>
                 </div>
               </div>
@@ -722,7 +777,7 @@ const Products = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 flex-1">
               {/* Search */}
               <div className="flex flex-col gap-1.5 lg:col-span-1">
-                <span className="text-xs font-semibold text-slate-600 uppercase tracking-wider">Search</span>
+                <span className="text-sm font-semibold text-slate-600">Search</span>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                   <input
@@ -737,7 +792,7 @@ const Products = () => {
 
               {/* Category Dropdown */}
               <div className="flex flex-col gap-1.5">
-                <span className="text-xs font-semibold text-slate-600 uppercase tracking-wider">Category</span>
+                <span className="text-sm font-semibold text-slate-600">Category</span>
                 <select
                   value={selectedCategory}
                   onChange={(e) => setSelectedCategory(e.target.value)}
@@ -752,7 +807,7 @@ const Products = () => {
 
               {/* Status Dropdown */}
               <div className="flex flex-col gap-1.5">
-                <span className="text-xs font-semibold text-slate-600 uppercase tracking-wider">Status</span>
+                <span className="text-sm font-semibold text-slate-600">Status</span>
                 <select
                   value={selectedStatus}
                   onChange={(e) => setSelectedStatus(e.target.value)}
@@ -767,7 +822,7 @@ const Products = () => {
 
               {/* Stock Status Dropdown */}
               <div className="flex flex-col gap-1.5">
-                <span className="text-xs font-semibold text-slate-600 uppercase tracking-wider">Stock Status</span>
+                <span className="text-sm font-semibold text-slate-600">Stock Status</span>
                 <select
                   value={selectedStockStatus}
                   onChange={(e) => setSelectedStockStatus(e.target.value)}
@@ -850,7 +905,7 @@ const Products = () => {
                                 )}
                               </div>
                               <div className="min-w-0">
-                                <span className="font-bold text-slate-800 text-sm block truncate max-w-[200px]" title={product.name}>
+                                <span className="font-semibold text-slate-800 text-md block truncate max-w-[200px]" title={product.name}>
                                   {product.name}
                                 </span>
                                 <span className="text-xs text-slate-400 block truncate max-w-[200px]" title={product.description || 'Premium Quality'}>
@@ -873,7 +928,7 @@ const Products = () => {
                             </div>
                           </td>
                           <td className="py-4 px-4">
-                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border uppercase tracking-wider shrink-0 ${statusDetails.bg}`}>
+                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border shrink-0 ${statusDetails.bg}`}>
                               <span className={`w-1.5 h-1.5 rounded-full ${statusDetails.dot}`}></span>
                               {statusDetails.label}
                             </span>
@@ -1014,58 +1069,59 @@ const Products = () => {
           {/* Split Catalog View */}
           <div className="flex flex-col lg:flex-row gap-6 items-start">
             {/* Left Sidebar: Suppliers List */}
-            <div className="w-full lg:w-72 xl:w-80 shrink-0 bg-white p-4 rounded-2xl border border-slate-100 shadow-xs flex flex-col gap-4 lg:sticky lg:top-[-20px]">
-              <div className="border-b border-slate-100 pb-3">
-                <span className="text-[16px] font-medium text-slate-400 block mb-2 px-0.5">Suppliers</span>
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                  <input
-                    type="text"
-                    placeholder="Search supplier..."
-                    value={supplierSearchQuery}
-                    onChange={(e) => setSupplierSearchQuery(e.target.value)}
-                    className="w-full pl-9 pr-3 py-3 border border-slate-200 rounded-xl outline-none focus:border-secondary focus:ring-1 focus:ring-secondary/25 transition-all text-sm bg-slate-50/50"
-                  />
+            {!selectedProductForDetail && (
+              <div className="w-full lg:w-72 xl:w-80 shrink-0 bg-white p-4 rounded-2xl border border-slate-100 shadow-xs flex flex-col gap-4 lg:sticky lg:top-[-20px]">
+                <div className="border-b border-slate-100 pb-3">
+                  <span className="text-[16px] font-medium text-slate-400 block mb-2 px-0.5">Suppliers</span>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input
+                      placeholder="Search supplier..."
+                      value={supplierSearchQuery}
+                      onChange={(e) => setSupplierSearchQuery(e.target.value)}
+                      className="w-full pl-9 pr-3 py-3 border border-slate-200 rounded-xl outline-none focus:border-secondary focus:ring-1 focus:ring-secondary/25 transition-all text-sm bg-slate-50/50"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-2 max-h-[500px] overflow-y-auto pr-1 sidebar-scroll">
+                  {suppliers.filter(s =>
+                    s.name.toLowerCase().includes(supplierSearchQuery.toLowerCase()) ||
+                    s.supplier_code.toLowerCase().includes(supplierSearchQuery.toLowerCase())
+                  ).map(s => {
+                    const isSelected = s.id.toString() === selectedSupplierId;
+                    const supplierProdCount = allProducts.filter(p => p.supplier_id === s.id).length;
+                    return (
+                      <button
+                        key={s.id}
+                        onClick={() => setSelectedSupplierId(s.id.toString())}
+                        className={`flex items-center text-left gap-3 p-3 rounded-xl transition-all cursor-pointer border ${isSelected
+                          ? 'bg-blue-50/30 border-secondary/40 shadow-xs ring-1 ring-secondary/20'
+                          : 'border-transparent hover:bg-slate-50'
+                          }`}
+                      >
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-xs uppercase transition-all duration-300 ${isSelected
+                          ? 'bg-gradient-to-r from-secondary to-primary text-white shadow-xs shadow-secondary/20'
+                          : 'bg-slate-100 text-slate-600'
+                          }`}>
+                          {s.name.substring(0, 2)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <span className={`text-sm block truncate ${isSelected ? 'font-bold text-blue-900' : 'font-semibold text-slate-800'}`}>
+                            {s.name}
+                          </span>
+                          <span className="text-[10px] text-slate-400 block tracking-wider font-medium uppercase">{s.supplier_code}</span>
+                        </div>
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${isSelected ? 'bg-secondary/15 text-blue-800' : 'bg-slate-100 text-slate-500'
+                          }`}>
+                          {supplierProdCount}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
-
-              <div className="flex flex-col gap-2 max-h-[500px] overflow-y-auto pr-1 sidebar-scroll">
-                {suppliers.filter(s =>
-                  s.name.toLowerCase().includes(supplierSearchQuery.toLowerCase()) ||
-                  s.supplier_code.toLowerCase().includes(supplierSearchQuery.toLowerCase())
-                ).map(s => {
-                  const isSelected = s.id.toString() === selectedSupplierId;
-                  const supplierProdCount = allProducts.filter(p => p.supplier_id === s.id).length;
-                  return (
-                    <button
-                      key={s.id}
-                      onClick={() => setSelectedSupplierId(s.id.toString())}
-                      className={`flex items-center text-left gap-3 p-3 rounded-xl transition-all cursor-pointer border ${isSelected
-                        ? 'bg-blue-50/30 border-secondary/40 shadow-xs ring-1 ring-secondary/20'
-                        : 'border-transparent hover:bg-slate-50'
-                        }`}
-                    >
-                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-xs uppercase transition-all duration-300 ${isSelected
-                        ? 'bg-gradient-to-r from-secondary to-primary text-white shadow-xs shadow-secondary/20'
-                        : 'bg-slate-100 text-slate-600'
-                        }`}>
-                        {s.name.substring(0, 2)}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <span className={`text-sm block truncate ${isSelected ? 'font-bold text-blue-900' : 'font-semibold text-slate-800'}`}>
-                          {s.name}
-                        </span>
-                        <span className="text-[10px] text-slate-400 block tracking-wider font-medium uppercase">{s.supplier_code}</span>
-                      </div>
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${isSelected ? 'bg-secondary/15 text-blue-800' : 'bg-slate-100 text-slate-500'
-                        }`}>
-                        {supplierProdCount}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+            )}
 
             {/* Right Pane: Catalog and Products Grid */}
             <div className="flex-1 w-full space-y-6">
@@ -1089,15 +1145,15 @@ const Products = () => {
 
                       <div className="relative z-10 flex-1">
                         <div className="flex flex-wrap items-center gap-2.5 mb-2">
-                          <span className="text-[10px] font-extrabold tracking-widest bg-secondary text-white px-2.5 py-0.75 rounded-md uppercase font-sans shadow-xs">
+                          <span className="text-[10px] font-semibold tracking-widest bg-secondary text-white px-2.5 py-0.75 rounded-md uppercase font-sans shadow-xs">
                             {selectedSupplier.supplier_code}
                           </span>
-                          <span className="text-xs text-emerald-500 font-bold flex items-center gap-1.5">
+                          <span className="text-xs text-emerald-500 font-semibold flex items-center gap-1.5">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                             Active Supplier Partner
                           </span>
                         </div>
-                        <h3 className="text-2xl font-semibold text-white uppercase">{selectedSupplier.name}</h3>
+                        <h3 className="text-2xl font-semibold text-white">{selectedSupplier.name}</h3>
                         <p className="text-xs text-slate-300 mt-2 max-w-xl leading-relaxed">
                           {selectedSupplier.address}, {selectedSupplier.city}, {selectedSupplier.state} - {selectedSupplier.pincode}
                         </p>
@@ -1106,16 +1162,16 @@ const Products = () => {
                       <div className="relative z-10 flex flex-col text-xs text-slate-200 gap-2 shrink-0 bg-white/5 border border-white/10 p-4 rounded-xl backdrop-blur-xs min-w-[240px] shadow-inner">
                         <div className="flex items-center justify-between gap-4">
                           <span className="text-slate-400 font-medium">Email:</span>
-                          <span className="font-semibold text-white truncate max-w-[160px]" title={selectedSupplier.email}>{selectedSupplier.email}</span>
+                          <span className="font-medium text-white max-w-[160px]" title={selectedSupplier.email}>{selectedSupplier.email}</span>
                         </div>
                         <div className="flex items-center justify-between gap-4">
                           <span className="text-slate-400 font-medium">Phone:</span>
-                          <span className="font-semibold text-white">{selectedSupplier.phone}</span>
+                          <span className="font-medium text-white">{selectedSupplier.phone}</span>
                         </div>
                         {selectedSupplier.gst && (
                           <div className="flex items-center justify-between gap-4 border-t border-white/5 pt-1.5 mt-0.5">
-                            <span className="text-secondary font-semibold">GSTIN:</span>
-                            <span className="font-bold text-secondary tracking-wide">{selectedSupplier.gst}</span>
+                            <span className="text-orange-500 font-semibold">GSTIN:</span>
+                            <span className="font-semibold text-orange-500 tracking-wide">{selectedSupplier.gst}</span>
                           </div>
                         )}
                       </div>
@@ -1128,8 +1184,6 @@ const Products = () => {
                         variantQuantities={variantQuantities}
                         onUpdateVariantQty={handleUpdateVariantQty}
                         onSetVariantQty={handleSetVariantQty}
-                        onPlaceBatchOrder={handlePlaceBatchOrder}
-                        isSubmitting={isSubmitting}
                       />
                     ) : (
                       /* RENDER STANDARD CATALOG GRID VIEW */
@@ -1138,11 +1192,11 @@ const Products = () => {
                         <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-xs space-y-5 animate-fade-in text-left">
                           {/* Categories Row */}
                           <div>
-                            <span className="text-[10px] font-extrabold text-slate-450 uppercase tracking-widest block mb-3 px-0.5">Categories</span>
+                            <span className="text-[15px] font-semibold text-slate-450 block mb-3 px-0.5">Categories</span>
                             <div className="flex flex-wrap gap-2">
                               <button
                                 onClick={() => setSelectedCategory('')}
-                                className={`px-4 py-2 text-xs font-bold rounded-xl transition-all duration-200 cursor-pointer select-none border uppercase tracking-wider ${selectedCategory === ''
+                                className={`px-4 py-2 text-md font-medium rounded-xl transition-all duration-200 cursor-pointer select-none border ${selectedCategory === ''
                                   ? 'bg-gradient-to-r from-secondary to-primary border-secondary text-white shadow-xs shadow-secondary/20'
                                   : 'bg-slate-50 border-slate-200/60 text-slate-650 hover:bg-slate-100 hover:text-slate-800'
                                   }`}
@@ -1153,7 +1207,7 @@ const Products = () => {
                                 <button
                                   key={cat.id}
                                   onClick={() => setSelectedCategory(cat.id.toString())}
-                                  className={`px-4 py-2 text-xs font-bold rounded-xl transition-all duration-200 cursor-pointer select-none border uppercase tracking-wider ${selectedCategory === cat.id.toString()
+                                  className={`px-4 py-2 text-md font-medium rounded-xl transition-all duration-200 cursor-pointer select-none border ${selectedCategory === cat.id.toString()
                                     ? 'bg-gradient-to-r from-secondary to-primary border-secondary text-white shadow-xs shadow-secondary/20'
                                     : 'bg-slate-50 border-slate-200/60 text-slate-650 hover:bg-slate-100 hover:text-slate-800'
                                     }`}
@@ -1230,7 +1284,7 @@ const Products = () => {
                               return (
                                 <div key={product.id} className="bg-white rounded-2xl border border-slate-100 shadow-xs hover:shadow-lg hover:border-slate-250 transition-all duration-300 flex flex-col justify-between overflow-hidden animate-fade-in group">
                                   {/* Saree Cover Image Section */}
-                                  <div className="aspect-[8/9] bg-slate-50 relative overflow-hidden shrink-0 border-b border-slate-100/50">
+                                  <div className="aspect-[8/7] bg-slate-50 relative overflow-hidden shrink-0 border-b border-slate-100/50">
                                     {coverImage ? (
                                       <img
                                         src={`http://localhost:5000${coverImage}`}
@@ -1246,7 +1300,7 @@ const Products = () => {
 
                                     {/* Status Badge overlay (always visible) */}
                                     <div className="absolute top-3 left-3 flex flex-col gap-1 z-5">
-                                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-black border uppercase tracking-wider shadow-sm bg-white/95 backdrop-blur-xs ${statusDetails.bg}`}>
+                                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-semibold border uppercase tracking-wider shadow-sm bg-white/95 backdrop-blur-xs ${statusDetails.bg}`}>
                                         <span className={`w-1.5 h-1.5 rounded-full ${statusDetails.dot}`}></span>
                                         {statusDetails.label}
                                       </span>
@@ -1254,7 +1308,7 @@ const Products = () => {
 
                                     {/* Stock Badge overlay (always visible) */}
                                     <div className="absolute top-3 right-3 z-5">
-                                      <span className={`inline-flex px-2.5 py-1 rounded-lg text-[9px] font-black shadow-sm tracking-wider uppercase bg-navy-dark text-white/90 border border-white/10 ${stockDetails.label === 'In Stock'
+                                      <span className={`inline-flex px-2.5 py-1 rounded-lg text-[9px] font-semibold shadow-sm tracking-wider uppercase bg-navy-dark text-white/90 border border-white/10 ${stockDetails.label === 'In Stock'
                                         ? 'bg-emerald-600'
                                         : stockDetails.label === 'Low Stock'
                                           ? 'bg-amber-500'
@@ -1269,7 +1323,7 @@ const Products = () => {
                                   <div className="p-4.5 flex-1 flex flex-col justify-between text-left">
                                     <div>
                                       {/* Category */}
-                                      <span className="text-[9.5px] font-extrabold text-secondary tracking-widest uppercase block mb-1">
+                                      <span className="text-[9.5px] font-semibold text-secondary tracking-widest uppercase block mb-1">
                                         {product.category?.name || 'DESIGN'}
                                       </span>
 
@@ -1294,7 +1348,7 @@ const Products = () => {
                                     {/* Price & MOQ Row */}
                                     <div className="flex items-center justify-between pt-3 border-t border-slate-100 mt-auto">
                                       <div>
-                                        <span className="text-slate-400 text-[9px] font-bold block uppercase tracking-wider">Rate</span>
+                                        <span className="text-emerald-600 text-[12px] font-medium block">Rate</span>
                                         <div className="flex items-baseline gap-1">
                                           <span className="text-sm font-extrabold text-navy-dark">
                                             ₹{parseFloat(product.price).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
@@ -1306,7 +1360,7 @@ const Products = () => {
                                       </div>
 
                                       <div className="text-right">
-                                        <span className="text-slate-400 text-[9px] font-bold block uppercase tracking-wider">Min Order</span>
+                                        <span className="text-emerald-600 text-[11px] font-semibold block">Min Order</span>
                                         <span className="text-[10px] font-bold text-slate-700 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-md">
                                           {product.moq || 1} {product.unit || 'pcs'}
                                         </span>
@@ -1517,13 +1571,13 @@ const Products = () => {
               className="w-full rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-600 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 mb-3"
             />
 
-            {(existingImages.length > 0 || selectedFiles.length > 0) && (
+            {productImages.length > 0 && (
               <div className="space-y-2.5 max-h-60 overflow-y-auto pr-1 border border-slate-100 rounded-xl p-2 bg-slate-50/50">
-                {existingImages.map((img, idx) => (
-                  <div key={`existing-${img.id}`} className="flex items-center gap-3 p-2 bg-white border border-slate-200 rounded-lg shadow-2xs">
+                {productImages.map((img, idx) => (
+                  <div key={img.type === 'existing' ? `existing-${img.data.id}` : `new-${idx}`} className="flex items-center gap-3 p-2 bg-white border border-slate-200 rounded-lg shadow-2xs">
                     <img
-                      src={`http://localhost:5000${img.url}`}
-                      alt={`Existing ${idx}`}
+                      src={img.type === 'existing' ? `http://localhost:5000${img.data.url}` : img.data.previewUrl}
+                      alt={`Image ${idx}`}
                       className="h-12 w-12 object-cover rounded-md border border-slate-200 shrink-0"
                     />
                     <div className="flex-1 grid grid-cols-2 gap-2">
@@ -1532,8 +1586,8 @@ const Products = () => {
                         <input
                           type="text"
                           placeholder="e.g. Red"
-                          value={img.color || ''}
-                          onChange={(e) => handleExistingImageMetaChange(img.id, 'color', e.target.value)}
+                          value={img.data.color || ''}
+                          onChange={(e) => handleImageMetaChange(idx, 'color', e.target.value)}
                           className="w-full text-xs border border-slate-200 rounded-md px-2 py-1 outline-none focus:ring-1 focus:ring-blue-500"
                         />
                       </div>
@@ -1542,8 +1596,8 @@ const Products = () => {
                         <input
                           type="number"
                           placeholder="0"
-                          value={img.quantity || 0}
-                          onChange={(e) => handleExistingImageMetaChange(img.id, 'quantity', e.target.value)}
+                          value={img.data.quantity || 0}
+                          onChange={(e) => handleImageMetaChange(idx, 'quantity', e.target.value)}
                           className="w-full text-xs border border-slate-200 rounded-md px-2 py-1 outline-none focus:ring-1 focus:ring-blue-500"
                         />
                       </div>
@@ -1554,56 +1608,19 @@ const Products = () => {
                           Front Image
                         </span>
                       )}
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveExistingImage(img.id)}
-                        className="text-red-500 hover:text-red-700 p-1 hover:bg-red-50 rounded-full transition-colors cursor-pointer"
-                        title="Remove Image"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-
-                {selectedFiles.map((f, idx) => (
-                  <div key={`new-${idx}`} className="flex items-center gap-3 p-2 bg-blue-50/30 border border-blue-200 rounded-lg shadow-2xs">
-                    <img
-                      src={f.previewUrl}
-                      alt={`New ${idx}`}
-                      className="h-12 w-12 object-cover rounded-md border border-blue-200 shrink-0"
-                    />
-                    <div className="flex-1 grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="block text-[10px] font-semibold text-blue-400 uppercase tracking-wider mb-0.5">Color</label>
-                        <input
-                          type="text"
-                          placeholder="e.g. Blue"
-                          value={f.color}
-                          onChange={(e) => handleNewFileMetaChange(idx, 'color', e.target.value)}
-                          className="w-full text-xs border border-blue-200 rounded-md px-2 py-1 outline-none focus:ring-1 focus:ring-blue-500"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[10px] font-semibold text-blue-400 uppercase tracking-wider mb-0.5">Quantity</label>
-                        <input
-                          type="number"
-                          placeholder="0"
-                          value={f.quantity}
-                          onChange={(e) => handleNewFileMetaChange(idx, 'quantity', e.target.value)}
-                          className="w-full text-xs border border-blue-200 rounded-md px-2 py-1 outline-none focus:ring-1 focus:ring-blue-500"
-                        />
-                      </div>
-                    </div>
-                    <div className="flex flex-col items-center justify-center shrink-0 pl-1">
-                      {existingImages.length === 0 && idx === 0 && (
-                        <span className="text-[9px] bg-blue-50 text-blue-700 border border-blue-100 font-extrabold px-1.5 py-0.5 rounded mb-1 whitespace-nowrap" title="First image is used as the cover photo">
-                          Front Image
-                        </span>
+                      {idx !== 0 && (
+                        <button
+                          type="button"
+                          onClick={() => makePrimaryImage(idx)}
+                          className="text-[9px] bg-white text-slate-500 hover:text-blue-600 border border-slate-200 hover:border-blue-200 font-semibold px-1.5 py-0.5 rounded mb-1 whitespace-nowrap cursor-pointer transition-colors"
+                          title="Set as front image"
+                        >
+                          Make Front
+                        </button>
                       )}
                       <button
                         type="button"
-                        onClick={() => handleRemoveSelectedFile(idx)}
+                        onClick={() => handleRemoveImage(idx)}
                         className="text-red-500 hover:text-red-700 p-1 hover:bg-red-50 rounded-full transition-colors cursor-pointer"
                         title="Remove Image"
                       >
@@ -1677,7 +1694,7 @@ const Products = () => {
                       />
 
                       {/* Active variant tag overlay */}
-                      <span className="absolute bottom-4 left-4 right-4 bg-navy-dark/95 backdrop-blur-xs text-white text-[10px] font-black uppercase tracking-widest py-2.5 px-3 rounded-xl inline-flex items-center justify-between border border-white/10 shadow-lg">
+                      <span className="absolute bottom-4 left-4 right-4 bg-navy-dark/95 backdrop-blur-xs text-white text-[13px] font-semibold py-2.5 px-3 rounded-xl inline-flex items-center justify-between border border-white/10 shadow-lg">
                         <span className="flex items-center gap-2">
                           <span className="w-2.5 h-2.5 rounded-full border border-white/20" style={getColorDotStyle(activeImage.color)}></span>
                           {activeImage.color || 'Not Specified'}
@@ -1699,7 +1716,7 @@ const Products = () => {
                   {/* Variants Thumbnail Grid */}
                   {images.length > 1 && (
                     <div>
-                      <span className="text-[10px] font-bold text-slate-450 uppercase tracking-wider block mb-2 px-1">
+                      <span className="text-[13px] font-semibold text-slate-450 block mb-2 px-0.5">
                         Color Variants ({images.length})
                       </span>
                       <div className="flex gap-2.5 overflow-x-auto pb-1.5 no-scrollbar scroll-smooth">
@@ -1740,7 +1757,7 @@ const Products = () => {
                           </span>
                         )}
                       </div>
-                      <h3 className="text-2xl font-semibold text-navy-dark uppercase">
+                      <h3 className="text-3xl font-semibold text-navy-dark">
                         {product.name}
                       </h3>
                     </div>
@@ -1748,15 +1765,15 @@ const Products = () => {
                     {/* Price and GST Card */}
                     <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4.5 flex items-center justify-between shadow-2xs">
                       <div>
-                        <span className="text-[8.5px] font-extrabold text-slate-450 uppercase tracking-widest block mb-0.5">Wholesale Rate</span>
+                        <span className="text-[11px] font-semibold text-slate-450 block mb-0.5">Wholesale Rate</span>
                         <span className="text-2xl font-semibold text-secondary tracking-tight">
                           ₹{parseFloat(product.price).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
                         </span>
                       </div>
                       {product.gst && (
                         <div className="text-right border-l border-slate-200 pl-6">
-                          <span className="text-[8.5px] font-extrabold text-slate-450 uppercase tracking-widest block mb-0.5">GST Rate</span>
-                          <span className="inline-flex px-2.5 py-0.5 rounded-lg text-xs font-black bg-white text-navy-dark border border-slate-200">
+                          <span className="text-[11px] font-semibold text-slate-450 block mb-0.5">GST Rate</span>
+                          <span className="inline-flex px-2.5 py-0.5 rounded-lg text-xs font-semibold bg-white text-green-600 border border-slate-200">
                             {product.gst}%
                           </span>
                         </div>
@@ -1766,22 +1783,22 @@ const Products = () => {
                     {/* Specs Grid */}
                     <div className="grid grid-cols-2 gap-3.5">
                       <div className="bg-slate-50/50 border border-slate-200 rounded-xl p-3 px-4 shadow-3xs">
-                        <span className="text-[9px] font-semibold text-slate-500 uppercase tracking-wider block">Category</span>
-                        <span className="text-xs font-bold text-navy-dark uppercase mt-0.5 block truncate">
+                        <span className="text-[11px] font-semibold text-slate-500 block mb-0.5">Category</span>
+                        <span className="text-md font-semibold text-navy-dark mt-0.5 block truncate">
                           {product.category?.name || 'N/A'}
                         </span>
                       </div>
                       {product.material && (
                         <div className="bg-slate-50/50 border border-slate-200 rounded-xl p-3 px-4 shadow-3xs">
-                          <span className="text-[9px] font-semibold text-slate-500 uppercase tracking-wider block">Material</span>
-                          <span className="text-xs font-bold text-navy-dark uppercase mt-0.5 block truncate">
+                          <span className="text-[11px] font-semibold text-slate-500 block mb-0.5">Material</span>
+                          <span className="text-md font-semibold text-navy-dark mt-0.5 block truncate">
                             {product.material}
                           </span>
                         </div>
                       )}
                       <div className="bg-slate-50/50 border border-slate-200 rounded-xl p-3 px-4 shadow-3xs col-span-2 sm:col-span-1">
-                        <span className="text-[9px] font-semibold text-slate-500 uppercase tracking-wider block">Total Available Stock</span>
-                        <span className={`inline-flex items-center gap-1.5 text-xs font-black uppercase mt-1 ${totalStock === 0
+                        <span className="text-[11px] font-semibold text-slate-500 block mb-0.5">Total Available Stock</span>
+                        <span className={`inline-flex items-center gap-1.5 text-xs font-semibold uppercase mt-1 ${totalStock === 0
                           ? 'text-rose-600'
                           : 'text-emerald-600'
                           }`}>
@@ -1791,8 +1808,8 @@ const Products = () => {
                       </div>
                       {product.unit && (
                         <div className="bg-slate-50/50 border border-slate-200 rounded-xl p-3 px-4 shadow-3xs col-span-2 sm:col-span-1">
-                          <span className="text-[9px] font-semibold text-slate-500 uppercase tracking-wider block">Unit Measure</span>
-                          <span className="text-xs font-bold text-navy-dark uppercase mt-0.5 block">
+                          <span className="text-[11px] font-semibold text-slate-500 block mb-0.5">Unit Measure</span>
+                          <span className="text-md font-semibold text-navy-dark mt-0.5 block truncate">
                             {product.unit}
                           </span>
                         </div>
@@ -1801,7 +1818,7 @@ const Products = () => {
 
                     {/* Colors Available */}
                     <div>
-                      <span className="text-[10px] font-extrabold text-slate-450 uppercase tracking-widest block mb-2 px-0.5">Colors Available</span>
+                      <span className="text-[13px] font-semibold text-slate-450 block mb-2 px-0.5">Colors Available</span>
                       <div className="flex flex-wrap gap-2">
                         {uniqueColors.length > 0 ? (
                           uniqueColors.map(color => {
@@ -1811,7 +1828,7 @@ const Products = () => {
                                 key={color}
                                 type="button"
                                 onClick={() => handleColorTagClick(color)}
-                                className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border shadow-3xs ${isActiveColor
+                                className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer border shadow-3xs ${isActiveColor
                                   ? 'bg-primary text-white border-primary shadow-sm scale-[0.98]'
                                   : 'bg-white text-slate-700 border-slate-200 hover:border-slate-350 hover:bg-slate-50'
                                   }`}
@@ -1830,7 +1847,7 @@ const Products = () => {
                     {/* Description */}
                     {product.description && (
                       <div className="space-y-1.5">
-                        <span className="text-[10px] font-extrabold text-slate-450 uppercase tracking-widest block px-0.5">Design Description</span>
+                        <span className="text-[13px] font-semibold text-slate-450 block mb-2 px-0.5">Design Description</span>
                         <p className="text-xs text-slate-600 font-medium leading-relaxed bg-slate-50/40 border border-slate-200 p-4 rounded-xl shadow-3xs">
                           {product.description}
                         </p>
@@ -1844,28 +1861,18 @@ const Products = () => {
         })()}
       </Modal>
 
-      {/* Batch Ordering Loading Overlay */}
-      {batchOrderingState.active && (
-        <div className="fixed inset-0 bg-navy-dark/80 backdrop-blur-md z-[9999] flex flex-col items-center justify-center text-white animate-fade-in">
-          <div className="bg-white/5 border border-white/10 p-8 rounded-2xl max-w-sm w-full text-center space-y-6 shadow-2xl relative">
-            <div className="w-16 h-16 border-4 border-secondary/20 border-t-secondary rounded-full animate-spin mx-auto"></div>
-            <div className="space-y-2 animate-pulse">
-              <h3 className="text-lg font-black tracking-wide text-secondary uppercase">Placing Orders</h3>
-              <p className="text-xs text-slate-300">
-                Generating purchase order {batchOrderingState.currentStep} of {batchOrderingState.totalSteps}...
-              </p>
-            </div>
-            <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
-              <div
-                className="bg-secondary h-full rounded-full transition-all duration-300"
-                style={{ width: `${(batchOrderingState.currentStep / batchOrderingState.totalSteps) * 100}%` }}
-              ></div>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        title="Delete Product"
+        message="Are you sure you want to delete this product? This action cannot be undone."
+        onConfirm={confirmDelete}
+        onCancel={() => setShowDeleteConfirm(false)}
+        confirmText="Delete"
+        confirmVariant="danger"
+      />
     </div>
   );
 };
 
 export default Products;
+
