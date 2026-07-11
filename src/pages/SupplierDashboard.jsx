@@ -193,6 +193,10 @@ const SupplierDashboard = () => {
         return <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-600 border border-amber-100">Pending</span>;
       case 'DISPATCHED':
         return <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-purple-50 text-purple-600 border border-purple-100">Shipped</span>;
+      case 'COMPLETED':
+        return <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-teal-50 text-teal-600 border border-teal-100">Delivered</span>;
+      case 'REJECTED':
+        return <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-600 border border-rose-100">Rejected</span>;
       default:
         return <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-50 text-slate-600 border border-slate-200">{status}</span>;
     }
@@ -546,11 +550,11 @@ const SupplierDashboard = () => {
             <table className="w-full text-left border-collapse whitespace-nowrap">
               <thead>
                 <tr className="bg-slate-50/50 border-b border-slate-100">
-                  <th className="py-4 px-6 text-[11px] font-bold uppercase tracking-wider text-slate-400">Order No.</th>
-                  <th className="py-4 px-6 text-[11px] font-bold uppercase tracking-wider text-slate-400">Buyer</th>
-                  <th className="py-4 px-6 text-[11px] font-bold uppercase tracking-wider text-slate-400">Order Date</th>
-                  <th className="py-4 px-6 text-[11px] font-bold uppercase tracking-wider text-slate-400">Amount</th>
-                  <th className="py-4 px-6 text-[11px] font-bold uppercase tracking-wider text-slate-400">Status</th>
+                  <th className="py-4 px-6 text-[13px] font-semibold text-slate-700">Order No.</th>
+                  <th className="py-4 px-6 text-[13px] font-semibold text-slate-700">Buyer</th>
+                  <th className="py-4 px-6 text-[13px] font-semibold text-slate-700">Order Date</th>
+                  <th className="py-4 px-6 text-[13px] font-semibold text-slate-700">Amount</th>
+                  <th className="py-4 px-6 text-[13px] font-semibold text-slate-700">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100/80">

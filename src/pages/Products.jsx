@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import {
   CheckCircle, Trash2, Pencil, Eye,
   Search, Filter, Download, Plus, ChevronLeft, ChevronRight,
-  Package, AlertTriangle, Bell, FileText, ArrowUpRight, ArrowDownRight, Image, Building
+  Package, AlertTriangle, Bell, FileText, ArrowUpRight, ArrowDownRight, Image, Building,
+  BookAIcon
 } from 'lucide-react';
-import { useCart } from '../store/CartContext';
 import ConfirmModal from '../components/common/ConfirmModal';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
@@ -639,8 +639,8 @@ const Products = () => {
           {/* Header section */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
-              <h2 className="text-2xl font-semibold text-slate-800">
-                My Products
+              <h2 className="text-2xl flex items-center gap-2 font-semibold text-slate-800">
+                <BookAIcon className='text-[#2563EB]' /> My Products
               </h2>
               <p className="text-sm text-slate-500 mt-1">
                 Manage your product catalog and inventory

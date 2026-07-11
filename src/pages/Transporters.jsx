@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getTransportersApi, createTransporterApi, updateTransporterApi, deleteTransporterApi } from '../commonApi/api';
 import toast from 'react-hot-toast';
-import { Truck, Plus, Edit2, Trash2, X } from 'lucide-react';
+import { Truck, Plus, Edit2, Trash2, X, TruckIcon } from 'lucide-react';
 import ConfirmModal from '../components/common/ConfirmModal';
 
 const Transporters = () => {
@@ -83,7 +83,7 @@ const Transporters = () => {
     <div className="space-y-6 animate-fade-in max-w-7xl mx-auto">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-navy-dark">Transporters</h1>
+          <h1 className="text-2xl flex items-center gap-2 font-semibold text-navy-dark"><TruckIcon className='text-[#2563EB]' />Transporters</h1>
           <p className="text-sm text-slate-500 mt-1">Manage your delivery partners and transporters.</p>
         </div>
         <button
@@ -168,7 +168,7 @@ const Transporters = () => {
                 <X className="w-5 h-5" />
               </button>
             </div>
-            
+
             <form onSubmit={handleSubmit} className="p-5 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Transporter Name <span className="text-rose-500">*</span></label>
@@ -181,7 +181,7 @@ const Transporters = () => {
                   placeholder="e.g. VRL Logistics"
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Contact Details</label>
                 <input
@@ -203,7 +203,7 @@ const Transporters = () => {
                   placeholder="Additional details..."
                 />
               </div>
-              
+
               <div className="pt-4 flex justify-end gap-3 border-t border-slate-100">
                 <button
                   type="button"

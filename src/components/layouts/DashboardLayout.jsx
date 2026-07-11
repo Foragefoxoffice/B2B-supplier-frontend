@@ -125,7 +125,7 @@ const DashboardLayout = () => {
   }
 
   // Protect Supplier-only routes from Admins
-  if (!isSupplier && location.pathname === '/categories') {
+  if (!isSupplier && ['/categories', '/orders', '/transporters'].includes(location.pathname)) {
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -190,7 +190,9 @@ const DashboardLayout = () => {
             </div>
 
             <SectionHeader title="Orders" isOpen={isSidebarOpen} />
-            <SidebarItem icon={ShoppingCart} label="Purchase Orders" to="/orders" isOpen={isSidebarOpen} />
+            {isSupplier && (
+              <SidebarItem icon={ShoppingCart} label="Purchase Orders" to="/orders" isOpen={isSidebarOpen} />
+            )}
             {!isSupplier && (
               <SidebarItem icon={MapPin} label="Order Tracking" to="/order-tracking" isOpen={isSidebarOpen} />
             )}

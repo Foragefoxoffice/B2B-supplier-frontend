@@ -258,19 +258,19 @@ const Login = () => {
           <div className="flex flex-col items-center mt-2">
             <div className="flex items-center gap-4 w-full mb-6">
               <div className="h-px bg-slate-200 flex-1"></div>
-              <span className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Wholesale Registration</span>
+              <span className="text-[13px] font-semibold text-primary">Wholesale Registration</span>
               <div className="h-px bg-slate-200 flex-1"></div>
             </div>
 
             <div className="w-full bg-white/80 rounded-2xl border border-slate-200/60 p-5 backdrop-blur-sm shadow-[0_2px_10px_rgb(0,0,0,0.02)]">
-              <div className="grid gap-y-4">
+              <div className="grid gap-y-3">
                 {/* Address */}
                 <div className="flex items-start gap-3.5">
                   <div className="bg-blue-50/80 p-2.5 rounded-xl shrink-0 text-blue-600 mt-0.5">
                     <MapPin className="w-4 h-4" />
                   </div>
                   <div>
-                    <span className="font-bold text-slate-800 text-sm block mb-1">Kannan Silks</span>
+                    <span className="font-semibold text-slate-800 text-sm block mb-1">Kannan Silks</span>
                     <span className="text-xs leading-relaxed text-slate-500 font-medium">No.2/40, Raja Veethi Road, Chinthamaniyur,<br />Omalur (Via), Salem (Dt.) Pin - 636 455.</span>
                   </div>
                 </div>
@@ -283,10 +283,10 @@ const Login = () => {
                     <div className="bg-emerald-50/80 p-2.5 rounded-xl shrink-0 text-emerald-600">
                       <Phone className="w-4 h-4" />
                     </div>
-                    <div className="flex-1 flex gap-3 items-center bg-emerald-50/30 px-3 py-2 rounded-xl border border-emerald-100/50">
-                      <a href="tel:+919787738094" className="text-sm font-semibold text-emerald-600 hover:text-emerald-700">+91 97877 38094</a>
-                      <span className="text-sm font-semibold text-emerald-600">/</span>
-                      <a href="tel:+916383900539" className="text-sm font-semibold text-emerald-600 hover:text-emerald-700">+91 63839 00539</a>
+                    <div className="flex-1 flex gap-3 items-center bg-emerald-50/30 px-3 py-1 rounded-lg border border-emerald-100/50">
+                      <a href="tel:+919787738094" className="text-xs font-semibold text-emerald-600 hover:text-emerald-700">+91 97877 38094</a>
+                      <span className="text-xs font-semibold text-emerald-600">/</span>
+                      <a href="tel:+916383900539" className="text-xs font-semibold text-emerald-600 hover:text-emerald-700">+91 63839 00539</a>
                     </div>
                   </div>
                 </div>

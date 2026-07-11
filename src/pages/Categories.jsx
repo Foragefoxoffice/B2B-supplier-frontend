@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2 } from 'lucide-react';
+import { Plus, Edit2, Trash2, WalletCards } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import ConfirmModal from '../components/common/ConfirmModal';
@@ -110,7 +110,7 @@ const Categories = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold text-slate-800">Categories</h2>
+          <h2 className="text-2xl font-semibold text-slate-800 flex items-center gap-2"> <WalletCards className='text-[#2563EB]' />Categories</h2>
           <p className="text-sm text-slate-500 mt-1">Organize your product hierarchy</p>
         </div>
         <button

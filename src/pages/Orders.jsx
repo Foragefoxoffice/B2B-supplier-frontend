@@ -3,16 +3,19 @@ import { getOrdersApi, updateOrderStatusApi } from '../commonApi/api';
 import {
   FileText, XCircle, Search, Calendar, ChevronDown,
   RefreshCw, FileClock, Users, CalendarDays, Receipt, Check, X,
-  MoreVertical, Download, LayoutGrid, List
+  MoreVertical, Download, Package, Truck,
+  CheckCircle
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ConfirmModal from '../components/common/ConfirmModal';
+import OrderDetailsModal from '../components/orders/OrderDetailsModal';
 
 const Orders = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [confirmState, setConfirmState] = useState({ isOpen: false, orderId: null, status: null });
   const [cancelRemarks, setCancelRemarks] = useState('');
+  const [selectedOrder, setSelectedOrder] = useState(null);
 
   // API returns these stats
   const [apiStats, setApiStats] = useState({ total: 0, inProgress: 0, shipped: 0, delivered: 0, cancelled: 0 });
@@ -146,71 +149,66 @@ const Orders = () => {
 
       {/* --- PAGE HEADER --- */}
       <div>
-        <div className="flex items-center gap-2 text-[13px] text-slate-500 mb-2">
-          <span>Approvals</span>
-          <span className="text-[10px]">&gt;</span>
-          <span className="text-slate-600 font-medium">Order Approval</span>
-        </div>
-        <h1 className="text-2xl font-bold text-[#1e293b] mb-1">Order Approval</h1>
+        <h1 className="text-2xl flex items-center gap-2 font-semibold text-[#1e293b] mb-1"><CheckCircle className='text-[#2563EB]' size={24} /> Order Approval</h1>
         <p className="text-[13px] text-slate-500">Review and approve purchase orders from suppliers</p>
       </div>
 
       {/* --- TOP SUMMARY CARDS --- */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Pending Approval */}
-        <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-start gap-4">
+        <div className="bg-white p-5 rounded-2xl shadow-xs border border-slate-100 flex items-start gap-4">
           <div className="h-12 w-12 rounded-xl bg-orange-50 flex items-center justify-center text-orange-500 shrink-0">
             <FileClock size={24} />
           </div>
           <div>
-            <p className="text-[13px] font-medium text-slate-500">Pending Approval</p>
-            <h3 className="text-2xl font-bold text-slate-800 mt-1">{apiStats.inProgress || orders.filter(o => o.status === 'SENT').length}</h3>
-            <p className="text-[12px] text-slate-400 mt-1">Orders</p>
+            <p className="text-[14px] font-medium text-slate-600">Pending Approval</p>
+            <h3 className="text-2xl font-semibold text-slate-800 mt-1">{apiStats.inProgress || orders.filter(o => o.status === 'SENT').length}</h3>
+            <p className="text-[12px] text-emerald-600 mt-1">Orders</p>
           </div>
         </div>
 
         {/* Total Order Value */}
-        <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-start gap-4">
+        <div className="bg-white p-5 rounded-2xl shadow-xs border border-slate-100 flex items-start gap-4">
           <div className="h-12 w-12 rounded-xl bg-blue-50 flex items-center justify-center text-blue-500 shrink-0">
             <Receipt size={24} />
           </div>
           <div>
-            <p className="text-[13px] font-medium text-slate-500">Total Order Value</p>
-            <h3 className="text-2xl font-bold text-slate-800 mt-1">{formatCurrency(totalValue)}</h3>
-            <p className="text-[12px] text-slate-400 mt-1">Across {orders.length} Orders</p>
+            <p className="text-[14px] font-medium text-slate-600">Total Order Value</p>
+            <h3 className="text-2xl font-semibold text-slate-800 mt-1">{formatCurrency(totalValue)}</h3>
+            <p className="text-[12px] text-emerald-600 mt-1">Across {orders.length} Orders</p>
           </div>
         </div>
 
         {/* Suppliers */}
-        <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-start gap-4">
+        <div className="bg-white p-5 rounded-2xl shadow-xs border border-slate-100 flex items-start gap-4">
           <div className="h-12 w-12 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-500 shrink-0">
             <Users size={24} />
           </div>
           <div>
-            <p className="text-[13px] font-medium text-slate-500">Suppliers</p>
-            <h3 className="text-2xl font-bold text-slate-800 mt-1">{uniqueSuppliers}</h3>
-            <p className="text-[12px] text-slate-400 mt-1">Unique Suppliers</p>
+            <p className="text-[14px] font-medium text-slate-600">Suppliers</p>
+            <h3 className="text-2xl font-semibold text-slate-800 mt-1">{uniqueSuppliers}</h3>
+            <p className="text-[12px] text-emerald-600 mt-1">Unique Suppliers</p>
           </div>
         </div>
 
         {/* Oldest Pending */}
-        <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-start gap-4">
+        <div className="bg-white p-5 rounded-2xl shadow-xs border border-slate-100 flex items-start gap-4">
           <div className="h-12 w-12 rounded-xl bg-purple-50 flex items-center justify-center text-purple-500 shrink-0">
             <CalendarDays size={24} />
           </div>
           <div>
-            <p className="text-[13px] font-medium text-slate-500">Oldest Pending</p>
-            <h3 className="text-2xl font-bold text-slate-800 mt-1">{oldestDays} Days</h3>
-            <p className="text-[12px] text-slate-400 mt-1">Since {oldestDateStr}</p>
+            <p className="text-[14px] font-medium text-slate-600">Oldest Pending</p>
+            <h3 className="text-2xl font-semibold text-slate-800 mt-1">{oldestDays} Days</h3>
+            <p className="text-[12px] text-emerald-600 mt-1">Since {oldestDateStr}</p>
           </div>
         </div>
       </div>
 
       {/* --- FILTER BAR --- */}
-      <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-wrap lg:flex-nowrap items-end gap-4">
+      <div className="bg-white p-4 rounded-2xl shadow-xs border border-slate-100 flex flex-wrap lg:flex-nowrap items-end gap-4">
         {/* Search */}
         <div className="flex-1 min-w-[200px]">
-          <label className="block text-[13px] font-medium text-slate-700 mb-1.5">Search</label>
+          <label className="block text-[14px] font-semibold text-slate-600 mb-1.5">Search</label>
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <Search size={16} className="text-slate-400" />
@@ -226,28 +224,11 @@ const Orders = () => {
           </div>
         </div>
 
-        {/* Supplier */}
-        <div className="w-48 shrink-0">
-          <label className="block text-[13px] font-medium text-slate-700 mb-1.5">Supplier</label>
-          <div className="relative">
-            <select
-              className="w-full pl-3 pr-8 py-2 text-[13px] border border-slate-200 rounded-lg appearance-none bg-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-              value={supplierFilter}
-              onChange={(e) => setSupplierFilter(e.target.value)}
-            >
-              <option value="All Suppliers">All Suppliers</option>
-              <option value="Supplier A">Supplier A</option>
-              <option value="Supplier B">Supplier B</option>
-            </select>
-            <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-              <ChevronDown size={14} className="text-slate-400" />
-            </div>
-          </div>
-        </div>
+
 
         {/* PO Date Range */}
         <div className="w-[280px] shrink-0">
-          <label className="block text-[13px] font-medium text-slate-700 mb-1.5">PO Date Range</label>
+          <label className="block text-[14px] font-semibold text-slate-600 mb-1.5">PO Date Range</label>
           <div className="relative flex items-center border border-slate-200 rounded-lg bg-white focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500 transition-colors overflow-hidden h-[38px]">
             <div className="pl-3 py-2 flex items-center justify-center text-slate-400 border-r border-slate-200 pr-2 bg-slate-50 h-full">
               <Calendar size={14} />
@@ -270,7 +251,7 @@ const Orders = () => {
 
         {/* Order Value (Placeholder) */}
         <div className="w-32 shrink-0">
-          <label className="block text-[13px] font-medium text-slate-700 mb-1.5">Order Value</label>
+          <label className="block text-[14px] font-semibold text-slate-600 mb-1.5">Order Value</label>
           <div className="relative">
             <select className="w-full pl-3 pr-8 py-2 text-[13px] border border-slate-200 rounded-lg appearance-none bg-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
               <option>All Values</option>
@@ -285,7 +266,7 @@ const Orders = () => {
 
         {/* Status */}
         <div className="w-40 shrink-0">
-          <label className="block text-[13px] font-medium text-slate-700 mb-1.5">Status</label>
+          <label className="block text-[14px] font-semibold text-slate-600 mb-1.5">Status</label>
           <div className="relative">
             <select
               className="w-full pl-3 pr-8 py-2 text-[13px] border border-slate-200 rounded-lg appearance-none bg-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
@@ -316,7 +297,7 @@ const Orders = () => {
           </button>
           <button
             onClick={handleApplyFilters}
-            className="px-5 bg-blue-600 text-white rounded-lg text-[13px] font-medium hover:bg-blue-700 transition-colors h-full"
+            className="px-5 bg-active-btn text-white rounded-lg text-[13px] font-medium hover:bg-blue-700 transition-colors h-full"
           >
             Apply Filters
           </button>
@@ -324,7 +305,7 @@ const Orders = () => {
       </div>
 
       {/* --- TABLE SECTION --- */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-xs border border-slate-100 overflow-hidden">
         {/* Table Header Controls */}
         <div className="px-6 py-3 border-b border-slate-100 flex items-center justify-between">
           <h3 className="font-semibold text-slate-800 text-[14px]">{apiStats.inProgress || orders.filter(o => o.status === 'SENT').length} Orders Pending Approval</h3>
@@ -343,7 +324,7 @@ const Orders = () => {
               <tr>
                 <th className="px-6 py-3 w-12"><input type="checkbox" className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4" /></th>
                 <th className="px-6 py-3 whitespace-nowrap font-semibold">Order Details</th>
-                <th className="px-6 py-3 whitespace-nowrap font-semibold">Supplier</th>
+
                 <th className="px-6 py-3 whitespace-nowrap font-semibold">PO Details</th>
                 <th className="px-6 py-3 whitespace-nowrap font-semibold">Order Date</th>
                 <th className="px-6 py-3 whitespace-nowrap font-semibold">Items / Value</th>
@@ -353,9 +334,9 @@ const Orders = () => {
             </thead>
             <tbody className="divide-y divide-slate-100 text-[13px]">
               {loading ? (
-                <tr><td colSpan="8" className="px-6 py-10 text-center text-slate-500">Loading orders...</td></tr>
+                <tr><td colSpan="7" className="px-6 py-10 text-center text-slate-500">Loading orders...</td></tr>
               ) : orders.length === 0 ? (
-                <tr><td colSpan="8" className="px-6 py-10 text-center text-slate-500">No purchase orders found.</td></tr>
+                <tr><td colSpan="7" className="px-6 py-10 text-center text-slate-500">No purchase orders found.</td></tr>
               ) : (
                 orders.map((order) => {
                   const firstItem = order.items?.[0]?.product;
@@ -372,7 +353,7 @@ const Orders = () => {
                         <div className="flex items-center gap-3">
                           <div className="h-12 w-12 rounded-lg bg-slate-100 flex-shrink-0 border border-slate-200 overflow-hidden">
                             {itemImage ? (
-                              <img src={`http://localhost:3000${itemImage}`} alt={firstItem?.name} className="h-full w-full object-cover" />
+                              <img src={`http://localhost:5000${itemImage}`} alt={firstItem?.name} className="h-full w-full object-cover" />
                             ) : (
                               <div className="h-full w-full flex items-center justify-center text-slate-400">
                                 <FileText size={20} />
@@ -383,18 +364,9 @@ const Orders = () => {
                             <div className="font-semibold text-slate-800">{order.po_number}</div>
                             <div className="text-slate-500 text-[12px] truncate max-w-[150px]">{firstItem?.name || 'Multiple Items'}</div>
                             <div className="mt-1">
-                              <span className="px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded text-[11px] font-medium tracking-wide">Premium Silk</span>
+                              <span className="px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded text-[11px] font-medium tracking-wide">{firstItem?.product_code || 'Product'}</span>
                             </div>
                           </div>
-                        </div>
-                      </td>
-
-                      {/* Supplier */}
-                      <td className="px-6 py-3">
-                        <div className="font-medium text-slate-700">{order.supplier?.name}</div>
-                        <div className="text-slate-400 text-[12px] mt-0.5">{order.supplier?.supplier_code}</div>
-                        <div className="mt-1">
-                          <span className="px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded text-[11px] font-medium tracking-wide">Active</span>
                         </div>
                       </td>
 
@@ -425,13 +397,13 @@ const Orders = () => {
                       {/* Actions */}
                       <td className="px-6 py-3 text-right">
                         <div className="flex items-center justify-end gap-2">
-                          <button className="text-blue-600 text-[13px] font-semibold px-3 py-1.5 rounded-md hover:bg-blue-50 transition-colors border border-transparent hover:border-blue-100">
+                          <button onClick={() => setSelectedOrder(order)} className="text-blue-600 text-[13px] font-semibold px-3 py-1.5 rounded-md hover:bg-blue-50 transition-colors border border-transparent hover:border-blue-100">
                             View Details
                           </button>
 
                           {(order.status === 'SENT' || order.status === 'ACCEPTED' || order.status === 'DISPATCHED') && (
                             <>
-                              {isSupplier && order.status === 'SENT' && (
+                              {order.status === 'SENT' && (
                                 <>
                                   <button onClick={() => handleUpdateStatus(order.id, 'ACCEPTED')} className="flex items-center gap-1.5 text-emerald-600 text-[13px] font-semibold px-3 py-1.5 border border-emerald-200 rounded-md hover:bg-emerald-50 transition-colors">
                                     <Check size={14} /> Approve
@@ -442,8 +414,14 @@ const Orders = () => {
                                 </>
                               )}
 
-                              {!isSupplier && order.status === 'DISPATCHED' && (
-                                <button onClick={() => handleUpdateStatus(order.id, 'COMPLETED')} className="flex items-center gap-1.5 text-blue-600 text-[13px] font-semibold px-3 py-1.5 border border-blue-200 rounded-md hover:bg-blue-50 transition-colors">
+                              {order.status === 'ACCEPTED' && (
+                                <button onClick={() => handleUpdateStatus(order.id, 'DISPATCHED')} className="flex items-center gap-1.5 text-blue-600 text-[13px] font-semibold px-3 py-1.5 border border-blue-200 rounded-md hover:bg-blue-50 transition-colors">
+                                  <Package size={14} /> Mark Dispatched
+                                </button>
+                              )}
+
+                              {order.status === 'DISPATCHED' && (
+                                <button onClick={() => handleUpdateStatus(order.id, 'COMPLETED')} className="flex items-center gap-1.5 text-emerald-600 text-[13px] font-semibold px-3 py-1.5 border border-emerald-200 rounded-md hover:bg-emerald-50 transition-colors">
                                   <Check size={14} /> Mark Delivered
                                 </button>
                               )}
@@ -546,6 +524,9 @@ const Orders = () => {
           </div>
         )}
       </ConfirmModal>
+      {selectedOrder && (
+        <OrderDetailsModal order={selectedOrder} onClose={() => setSelectedOrder(null)} onUpdateStatus={handleUpdateStatus} />
+      )}
     </div>
   );
 };
