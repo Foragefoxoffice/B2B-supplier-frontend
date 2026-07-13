@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getStatsApi, getOrdersApi, getSuppliersApi } from '../commonApi/api';
 import { FullDashboardSkeleton } from '../components/common/SkeletonLoader';
+import { useNotifications } from '../hooks/useNotifications';
 import {
   Users, ShoppingCart, Hourglass, CheckCircle,
   MoreVertical, Calendar, ArrowUp, ArrowDown,
   ChevronDown, ArrowRight, Package, Box,
-  HelpCircle
+  HelpCircle, Bell, MessageSquare, Truck, AlertCircle, ClipboardList
 } from 'lucide-react';
 import {
   Chart as ChartJS,
@@ -14,19 +15,21 @@ import {
   LinearScale,
   PointElement,
   LineElement,
+  BarElement,
   Title,
   Tooltip,
   Legend,
   Filler,
   ArcElement
 } from 'chart.js';
-import { Line, Doughnut } from 'react-chartjs-2';
+import { Line, Doughnut, Bar } from 'react-chartjs-2';
 
 ChartJS.register(
   CategoryScale,
   LinearScale,
   PointElement,
   LineElement,
+  BarElement,
   Title,
   Tooltip,
   Legend,
@@ -61,6 +64,25 @@ const StatCard = ({ title, value, icon: Icon, colorClass, bgColorClass, trend, t
   );
 };
 
+const getNotificationIcon = (type) => {
+  switch (type) {
+    case 'NEW_PO':
+    case 'order':
+      return { icon: ShoppingCart, color: 'bg-blue-100 text-blue-600' };
+    case 'PO_APPROVED':
+    case 'product':
+      return { icon: Package, color: 'bg-green-100 text-green-600' };
+    case 'DISPATCH_UPDATED':
+      return { icon: Truck, color: 'bg-purple-100 text-purple-600' };
+    case 'NEW_MESSAGE':
+      return { icon: MessageSquare, color: 'bg-orange-100 text-orange-600' };
+    case 'alert':
+      return { icon: AlertCircle, color: 'bg-rose-100 text-rose-600' };
+    default:
+      return { icon: Bell, color: 'bg-slate-100 text-slate-600' };
+  }
+};
+
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
@@ -72,6 +94,8 @@ const AdminDashboard = () => {
   // Read role to determine if Superadmin
   const userString = localStorage.getItem('user');
   const user = userString ? JSON.parse(userString) : { first_name: 'Admin', role: 'SUPER_ADMIN' };
+  const token = localStorage.getItem('token');
+  const { notifications } = useNotifications(user, token);
 
   // Chart States initialized to 0 for entry animations
   const [lineChartData, setLineChartData] = useState({
@@ -116,6 +140,36 @@ const AdminDashboard = () => {
         ],
         borderWidth: 0,
         hoverOffset: 4
+      }
+    ]
+  });
+
+  const [topSuppliersData, setTopSuppliersData] = useState({
+    labels: [],
+    datasets: [
+      {
+        label: 'Total Spend (₹)',
+        data: [],
+        backgroundColor: 'rgba(59, 130, 246, 0.85)',
+        hoverBackgroundColor: 'rgba(37, 99, 235, 1)',
+        borderRadius: 8,
+        borderSkipped: false,
+        barThickness: 24,
+      }
+    ]
+  });
+
+  const [monthlySpendData, setMonthlySpendData] = useState({
+    labels: [],
+    datasets: [
+      {
+        label: 'Monthly Spend (₹)',
+        data: [],
+        backgroundColor: 'rgba(16, 185, 129, 0.85)',
+        hoverBackgroundColor: 'rgba(5, 150, 105, 1)',
+        borderRadius: 8,
+        borderSkipped: false,
+        barThickness: 24,
       }
     ]
   });
@@ -244,6 +298,65 @@ const AdminDashboard = () => {
           }
         ]
       });
+
+      // Compute Top Suppliers by Spend
+      const supplierTotals = {};
+      orders.forEach(o => {
+        const supplierName = o.supplier?.name || `Supplier #${o.supplier_id}`;
+        const amount = parseFloat(o.total_amount) || 0;
+        supplierTotals[supplierName] = (supplierTotals[supplierName] || 0) + amount;
+      });
+
+      const sortedSuppliers = Object.entries(supplierTotals)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5);
+
+      setTopSuppliersData({
+        labels: sortedSuppliers.map(s => s[0]),
+        datasets: [
+          {
+            label: 'Total Spend (₹)',
+            data: sortedSuppliers.map(s => s[1]),
+            backgroundColor: 'rgba(59, 130, 246, 0.85)',
+            hoverBackgroundColor: 'rgba(37, 99, 235, 1)',
+            borderRadius: 8,
+            borderSkipped: false,
+            barThickness: 24,
+          }
+        ]
+      });
+
+      // Compute Monthly Spend Trend
+      const monthlyTotals = {};
+      orders.forEach(o => {
+        const date = new Date(o.date);
+        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        const monthName = date.toLocaleString('default', { month: 'short' });
+        const amount = parseFloat(o.total_amount) || 0;
+        if (!monthlyTotals[monthKey]) {
+          monthlyTotals[monthKey] = { label: monthName, value: 0 };
+        }
+        monthlyTotals[monthKey].value += amount;
+      });
+
+      const sortedMonthly = Object.entries(monthlyTotals)
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .slice(-6); // last 6 months
+
+      setMonthlySpendData({
+        labels: sortedMonthly.map(m => m[1].label),
+        datasets: [
+          {
+            label: 'Monthly Spend (₹)',
+            data: sortedMonthly.map(m => m[1].value),
+            backgroundColor: 'rgba(16, 185, 129, 0.85)',
+            hoverBackgroundColor: 'rgba(5, 150, 105, 1)',
+            borderRadius: 8,
+            borderSkipped: false,
+            barThickness: 24,
+          }
+        ]
+      });
     }, 150);
 
     return () => clearTimeout(timer);
@@ -283,6 +396,52 @@ const AdminDashboard = () => {
       mode: 'nearest',
       axis: 'x',
       intersect: false
+    }
+  };
+
+  const barChartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: false,
+      },
+      tooltip: {
+        mode: 'index',
+        intersect: false,
+        callbacks: {
+          label: function (context) {
+            let label = context.dataset.label || '';
+            if (label) label += ': ';
+            if (context.parsed.y !== null) {
+              label += formatCurrency(context.parsed.y);
+            }
+            return label;
+          }
+        }
+      },
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        ticks: {
+          color: '#94A3B8',
+          font: { size: 11, weight: '500' },
+          callback: function (value) {
+            if (value >= 100000) return '₹' + (value / 100000).toFixed(1) + 'L';
+            if (value >= 1000) return '₹' + (value / 1000).toFixed(0) + 'K';
+            return '₹' + value;
+          }
+        },
+        grid: {
+          color: '#F1F5F9',
+          drawBorder: false,
+        }
+      },
+      x: {
+        ticks: { color: '#64748B', font: { size: 11, weight: '500' } },
+        grid: { display: false, drawBorder: false }
+      }
     }
   };
 
@@ -330,17 +489,25 @@ const AdminDashboard = () => {
   // Status badge helper
   const getStatusBadge = (status) => {
     switch (status) {
+      case 'DRAFT':
+        return <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[13px] font-semibold bg-slate-50 text-slate-500 border border-slate-200/50">Draft</span>;
+      case 'SENT':
+        return <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[13px] font-semibold bg-indigo-50 text-indigo-600 border border-indigo-100/60">Sent</span>;
       case 'ACCEPTED':
-        return <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-600 border border-blue-100/80">Confirmed</span>;
+        return <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[13px] font-semibold bg-emerald-50 text-emerald-600 border border-emerald-100/60">Confirmed</span>;
       case 'IN_PRODUCTION':
-        return <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-600 border border-amber-100/80">In Production</span>;
+        return <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[13px] font-semibold bg-amber-50 text-amber-600 border border-amber-100/60">In Production</span>;
       case 'DISPATCHED':
-        return <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-purple-50 text-purple-600 border border-purple-100/80">Dispatched</span>;
+        return <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[13px] font-semibold bg-purple-50 text-purple-600 border border-purple-100/60">Dispatched</span>;
       case 'DELIVERED':
       case 'COMPLETED':
-        return <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-600 border border-emerald-100/80">Delivered</span>;
+        return <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[13px] font-semibold bg-teal-50 text-teal-600 border border-teal-100/60">Delivered</span>;
+      case 'REJECTED':
+        return <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[13px] font-semibold bg-rose-50 text-rose-600 border border-rose-100/60">Rejected</span>;
+      case 'MODIFICATION_REQUESTED':
+        return <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[13px] font-semibold bg-amber-50 text-amber-600 border border-amber-100/60">Mod. Requested</span>;
       default:
-        return <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-50 text-slate-600 border border-slate-200/80">{status}</span>;
+        return <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[13px] font-semibold bg-slate-50 text-slate-600 border border-slate-200/80">{status}</span>;
     }
   };
 
@@ -522,50 +689,106 @@ const AdminDashboard = () => {
             </div>
           </div>
 
+          {/* Secondary Report Charts */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Top Suppliers Spend Bar Chart */}
+            <div className="bg-white p-6 rounded-2xl shadow-xs border border-slate-100 flex flex-col justify-between">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mr-2">Top Suppliers by Spend</h3>
+                  <p className="text-sm text-slate-400 font-medium mt-1">Spend distribution among your top 5 suppliers</p>
+                </div>
+                <span className="text-xs bg-blue-50 text-blue-600 font-bold px-3 py-1 rounded-full shrink-0 border border-blue-100">Top 5</span>
+              </div>
+              <div className="h-[280px] w-full mt-4">
+                <Bar data={topSuppliersData} options={barChartOptions} />
+              </div>
+            </div>
+
+            {/* Monthly Spend Bar Chart */}
+            <div className="bg-white p-6 rounded-2xl shadow-xs border border-slate-100 flex flex-col justify-between">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mr-2">Monthly Purchase Order Trend</h3>
+                  <p className="text-sm text-slate-400 font-medium mt-1">Aggregated spend trend over the last 6 months</p>
+                </div>
+                <span className="text-xs bg-emerald-50 text-emerald-600 font-bold px-3 py-1 rounded-full shrink-0 border border-emerald-100">6 Months</span>
+              </div>
+              <div className="h-[280px] w-full mt-4">
+                <Bar data={monthlySpendData} options={barChartOptions} />
+              </div>
+            </div>
+          </div>
+
           {/* Bottom Section: Tables and Lists */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Recent Purchase Orders */}
-            <div className="bg-white p-2 rounded-2xl shadow-xs border border-slate-100 lg:col-span-2">
-              <div className="p-5 flex items-center justify-between border-b border-slate-100/80">
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden lg:col-span-2 flex flex-col justify-between">
+              <div className="p-6 flex items-center justify-between border-b border-slate-100 bg-gradient-to-r from-slate-50/30 via-transparent to-transparent">
                 <div>
-                  <h3 className="text-[17px] font-semibold text-slate-800 tracking-tight">Recent Purchase Orders</h3>
-                  <p className="text-[13px] text-slate-500 font-medium mt-0.5">Latest orders from your suppliers</p>
+                  <h3 className="text-[20px] font-semibold text-slate-800 tracking-tight flex items-center gap-2">
+                    <ClipboardList className="h-5 w-5 text-blue-600 shrink-0" />
+                    Recent Purchase Orders
+                  </h3>
+                  <p className="text-[14px] text-slate-400 font-medium mt-1">Latest orders from your suppliers</p>
                 </div>
-                <button onClick={() => navigate('/order-tracking')} className="text-[13px] font-semibold text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-lg transition-colors duration-200">
+                <button onClick={() => navigate('/order-tracking')} className="text-[13px] font-semibold text-blue-600 hover:text-blue-700 bg-blue-50/50 hover:bg-blue-50 border border-blue-100/50 px-4 py-2 rounded-xl transition-all duration-200 hover:shadow-2xs cursor-pointer">
                   View All
                 </button>
               </div>
-              <div className="overflow-x-auto no-scrollbar">
+              <div className="overflow-x-auto no-scrollbar flex-1">
                 <table className="w-full text-left border-collapse whitespace-nowrap">
                   <thead>
-                    <tr className="bg-slate-50/50 border-b border-slate-100">
-                      <th className="py-3.5 px-5 text-[11px] font-semibold uppercase tracking-wider text-slate-500">PO Number</th>
-                      <th className="py-3.5 px-5 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Supplier</th>
-                      <th className="py-3.5 px-5 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Order Date</th>
-                      <th className="py-3.5 px-5 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Delivery Date</th>
-                      <th className="py-3.5 px-5 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Status</th>
-                      <th className="py-3.5 px-5 text-[11px] font-semibold uppercase tracking-wider text-slate-500 text-right">Total Amount</th>
+                    <tr className="bg-slate-50/60 border-b border-slate-100">
+                      <th className="py-3.5 px-6 text-[14px] font-semibold text-slate-600">PO Number</th>
+                      <th className="py-3.5 px-6 text-[14px] font-semibold text-slate-600">Supplier</th>
+                      <th className="py-3.5 px-6 text-[14px] font-semibold text-slate-600">Order Date</th>
+                      <th className="py-3.5 px-6 text-[14px] font-semibold text-slate-600">Delivery Date</th>
+                      <th className="py-3.5 px-6 text-[14px] font-semibold text-slate-600">Status</th>
+                      <th className="py-3.5 px-6 text-[14px] font-semibold text-slate-600 text-right">Total Amount</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100/80">
                     {recentOrdersList.length > 0 ? (
                       recentOrdersList.map((row) => (
-                        <tr key={row.id} className="hover:bg-slate-50/60 transition-colors duration-150 group">
-                          <td className="py-4 px-5">
-                            <span className="text-[13.5px] font-semibold text-slate-800">{row.po_number}</span>
+                        <tr key={row.id} onClick={() => navigate('/order-tracking')} className="hover:bg-slate-50/70 transition-all duration-200 cursor-pointer group/row">
+                          <td className="py-4.5 px-6">
+                            <span className="font-mono text-[12.5px] font-bold text-slate-700 bg-slate-50 border border-slate-100 px-2.5 py-1.5 rounded-lg group-hover/row:border-blue-200 group-hover/row:bg-blue-50/20 transition-colors">
+                              {row.po_number}
+                            </span>
                           </td>
-                          <td className="py-4 px-5">
+                          <td className="py-4.5 px-6">
                             <div className="flex items-center">
-                              <div className="h-8 w-8 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center text-xs font-bold mr-3 border border-slate-200">
-                                {(row.supplier?.name || 'S').charAt(0)}
+                              <div className="flex flex-col">
+                                <span className="text-[15px] font-semibold text-slate-700 leading-tight group-hover/row:text-blue-600 transition-colors">{row.supplier?.name}</span>
+                                <span className="text-[11px] font-semibold text-slate-400 mt-0.5">{row.supplier?.supplier_code || 'SUP-000'}</span>
                               </div>
-                              <span className="text-[14px] font-semibold text-slate-700">{row.supplier?.name}</span>
                             </div>
                           </td>
-                          <td className="py-4 px-5 text-[13.5px] font-medium text-slate-500">{formatDate(row.date)}</td>
-                          <td className="py-4 px-5 text-[13.5px] font-medium text-slate-500">{row.delivery_date ? formatDate(row.delivery_date) : 'N/A'}</td>
-                          <td className="py-4 px-5">{getStatusBadge(row.status)}</td>
-                          <td className="py-4 px-5 text-[14px] font-bold text-slate-800 text-right">{formatCurrency(row.total_amount)}</td>
+                          <td className="py-4.5 px-6">
+                            <div className="flex items-center text-[13px] font-semibold text-slate-600">
+                              <Calendar className="h-3.5 w-3.5 mr-1.5 text-slate-400 shrink-0" />
+                              {formatDate(row.date)}
+                            </div>
+                          </td>
+                          <td className="py-4.5 px-6">
+                            {row.delivery_date ? (
+                              <div className="flex items-center text-[13px] font-semibold text-slate-600">
+                                <Calendar className="h-3.5 w-3.5 mr-1.5 text-slate-400 shrink-0" />
+                                {formatDate(row.delivery_date)}
+                              </div>
+                            ) : (
+                              <span className="inline-flex px-2 py-0.5 rounded text-[11px] font-bold bg-slate-50 text-slate-400 border border-slate-200/50">
+                                N/A
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-4.5 px-6">{getStatusBadge(row.status)}</td>
+                          <td className="py-4.5 px-6 text-right">
+                            <span className="text-[14.5px] font-semibold text-slate-800 tracking-tight">
+                              {formatCurrency(row.total_amount)}
+                            </span>
+                          </td>
                         </tr>
                       ))
                     ) : (
@@ -586,35 +809,33 @@ const AdminDashboard = () => {
               </div>
             </div>
 
-            {/* Right Column: Messages and Approvals */}
+            {/* Right Column: Notifications and Approvals */}
             <div className="flex flex-col gap-6 lg:col-span-1">
-              {/* Recent Messages */}
+              {/* Recent Notifications */}
               <div className="bg-white rounded-2xl shadow-xs border border-slate-100 overflow-hidden">
                 <div className="p-4 border-b border-slate-100 flex items-center justify-between">
-                  <h3 className="text-lg font-semibold text-slate-800">Recent Messages</h3>
-                  <button onClick={() => navigate('/messages')} className="text-sm font-semibold text-blue-600 hover:text-blue-700">View All</button>
+                  <h3 className="text-lg font-semibold text-slate-800">Recent Notifications</h3>
+                  <button onClick={() => navigate('/notifications')} className="text-sm font-semibold text-blue-600 hover:text-blue-700">View All</button>
                 </div>
                 <div className="divide-y divide-slate-100">
-                  {recentMessages.length > 0 ? (
-                    recentMessages.map((msg) => {
-                      const senderName = msg.sender?.supplier?.name || `${msg.sender?.first_name} ${msg.sender?.last_name}`;
-                      const isUnread = msg.status !== 'READ';
+                  {notifications && notifications.length > 0 ? (
+                    notifications.slice(0, 4).map((notif) => {
+                      const { icon: Icon, color } = getNotificationIcon(notif.type);
+                      const isUnread = !notif.is_read;
                       return (
-                        <div key={msg.id} className="p-4 flex items-start hover:bg-slate-50/50 transition-colors cursor-pointer">
-                          <img
-                            src={`https://ui-avatars.com/api/?name=${encodeURIComponent(senderName)}&background=random&color=fff`}
-                            alt={senderName}
-                            className="h-10 w-10 rounded-full shrink-0 mr-3"
-                          />
+                        <div key={notif.id} onClick={() => navigate('/notifications')} className="p-4 flex items-start hover:bg-slate-50/50 transition-colors cursor-pointer">
+                          <div className={`h-9 w-9 rounded-xl flex items-center justify-center shrink-0 mr-3 ${color}`}>
+                            <Icon className="h-[18px] w-[18px]" />
+                          </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between mb-0.5">
                               <p className={`text-sm truncate ${isUnread ? 'font-bold text-slate-800' : 'font-semibold text-slate-700'}`}>
-                                {senderName}
+                                {notif.title}
                               </p>
-                              <p className="text-xs font-medium text-slate-400 whitespace-nowrap ml-2">{formatMessageTime(msg.created_at)}</p>
+                              <p className="text-xs font-medium text-slate-400 whitespace-nowrap ml-2">{formatMessageTime(notif.created_at)}</p>
                             </div>
                             <p className={`text-sm truncate ${isUnread ? 'font-medium text-slate-600' : 'text-slate-500'}`}>
-                              {msg.content}
+                              {notif.message}
                             </p>
                           </div>
                           {isUnread && (
@@ -625,7 +846,7 @@ const AdminDashboard = () => {
                     })
                   ) : (
                     <div className="p-8 text-center text-slate-400 text-sm font-medium">
-                      No recent messages.
+                      No recent notifications.
                     </div>
                   )}
                 </div>

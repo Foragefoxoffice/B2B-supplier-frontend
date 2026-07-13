@@ -1181,7 +1181,7 @@ const Products = () => {
                         </p>
                       </div>
 
-                      <div className="relative z-10 flex flex-col text-xs text-slate-200 gap-2 shrink-0 bg-white/5 border border-white/10 p-4 rounded-xl backdrop-blur-xs min-w-[300px] shadow-inner">
+                      <div className="relative flex flex-col text-xs text-slate-200 gap-2 shrink-0 bg-white/5 border border-white/10 p-4 rounded-xl backdrop-blur-xs min-w-[300px] shadow-inner">
                         <div className="flex items-center justify-between gap-4">
                           <span className="text-slate-400 font-medium">Email:</span>
                           <span className="font-medium text-white" title={selectedSupplier.email}>{selectedSupplier.email}</span>
@@ -1528,7 +1528,7 @@ const Products = () => {
 
             {/* Rate (₹) * */}
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1">Rate (₹) <span className="text-red-500">*</span></label>
+              <label className="block text-sm flex items-center font-semibold text-slate-700 mb-1">Rate (₹)  <span className="text-red-500 ml-2">*Exclusive GST Rate</span></label>
               <input
                 type="number"
                 step="0.01"

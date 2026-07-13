@@ -294,26 +294,31 @@ const OrderTracking = () => {
                     <ChevronRight className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none rotate-90" />
                 </div>
 
-                <div className="flex items-center gap-2">
-                    <div className="relative group">
-                        <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-500 transition-colors pointer-events-none" />
-                        <input
-                            type="date"
-                            className="w-[140px] pl-9 pr-2 py-2.5 bg-slate-50/50 hover:bg-slate-50 border border-slate-200 rounded-xl text-[13px] transition-all focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 focus:bg-white text-slate-600"
-                            value={startDate}
-                            onChange={(e) => setStartDate(e.target.value)}
-                        />
-                    </div>
+                <div className="relative flex items-center border border-slate-200 rounded-xl bg-slate-50/50 hover:bg-slate-50 focus-within:border-blue-500 focus-within:ring-4 focus-within:ring-blue-500/10 focus-within:bg-white transition-all overflow-hidden h-[42px] px-3 gap-2">
+                    <Calendar className="w-4 h-4 text-slate-400 pointer-events-none" />
+                    <input
+                        type="date"
+                        className="w-[110px] bg-transparent border-none outline-none text-sm text-slate-600 cursor-pointer [&::-webkit-calendar-picker-indicator]:hidden"
+                        value={startDate}
+                        onChange={(e) => {
+                            setStartDate(e.target.value);
+                            setAppliedStartDate(e.target.value);
+                            setPage(1);
+                        }}
+                        onClick={(e) => e.target.showPicker && e.target.showPicker()}
+                    />
                     <span className="text-slate-400 text-sm font-medium">to</span>
-                    <div className="relative group">
-                        <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-500 transition-colors pointer-events-none" />
-                        <input
-                            type="date"
-                            className="w-[140px] pl-9 pr-2 py-2.5 bg-slate-50/50 hover:bg-slate-50 border border-slate-200 rounded-xl text-[13px] transition-all focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 focus:bg-white text-slate-600"
-                            value={endDate}
-                            onChange={(e) => setEndDate(e.target.value)}
-                        />
-                    </div>
+                    <input
+                        type="date"
+                        className="w-[110px] bg-transparent border-none outline-none text-sm text-slate-600 cursor-pointer [&::-webkit-calendar-picker-indicator]:hidden"
+                        value={endDate}
+                        onChange={(e) => {
+                            setEndDate(e.target.value);
+                            setAppliedEndDate(e.target.value);
+                            setPage(1);
+                        }}
+                        onClick={(e) => e.target.showPicker && e.target.showPicker()}
+                    />
                 </div>
 
                 <div className="flex items-center gap-3 ml-auto">

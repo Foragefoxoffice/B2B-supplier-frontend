@@ -306,14 +306,14 @@ const DashboardLayout = () => {
               </button>
 
               {isNotificationOpen && (
-                <div className="absolute right-0 mt-3 w-80 bg-white rounded-xl shadow-lg border border-slate-100 z-50 overflow-hidden transform origin-top-right transition-all flex flex-col max-h-[85vh]">
+                <div className="absolute right-0 mt-3 w-80 bg-white rounded-xl shadow-lg border border-slate-100 z-99 overflow-hidden transform origin-top-right transition-all flex flex-col max-h-[85vh]">
                   <div className="px-4 py-3 border-b border-slate-100 flex justify-between items-center shrink-0">
                     <h3 className="font-bold text-slate-800 text-sm">Notifications</h3>
                     {unreadCount > 0 && (
                       <span className="text-xs bg-blue-100 text-blue-600 font-semibold px-2 py-0.5 rounded-full">{unreadCount} new</span>
                     )}
                   </div>
-                  
+
                   <div className="overflow-y-auto flex-1 sidebar-scroll">
                     {notifications && notifications.length > 0 ? (
                       <div className="divide-y divide-slate-50">
@@ -344,7 +344,7 @@ const DashboardLayout = () => {
                   </div>
 
                   <div className="border-t border-slate-100 p-2 shrink-0">
-                    <button 
+                    <button
                       onClick={() => {
                         setIsNotificationOpen(false);
                         navigate('/notifications');
