@@ -1,11 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { NavLink, Outlet, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import {
   Home, Package, Bell, Settings, Menu, Search, Mail,
-  Users, ShoppingCart, LogOut, FolderOpen, Truck, MapPin
+  Users, ShoppingCart, LogOut, FolderOpen, Truck, MapPin, Activity
 } from 'lucide-react';
 import { useCart } from '../../store/CartContext';
 import toast from 'react-hot-toast';
+import { useNotifications } from '../../hooks/useNotifications.jsx';
 
 const SidebarItem = ({ icon: Icon, label, to, badge, activeOverride, isOpen: isSidebarOpen, onClick }) => {
   const location = useLocation();
@@ -75,7 +76,14 @@ const DashboardLayout = () => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 768);
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const notificationRef = useRef(null);
   const { cartStats } = useCart();
+
+  const token = localStorage.getItem('token');
+
+  // Initialize notifications
+  const { notifications, unreadCount } = useNotifications(user, token);
 
   // Handle window resize to auto-close/open sidebar
   useEffect(() => {
@@ -86,8 +94,18 @@ const DashboardLayout = () => {
         setIsSidebarOpen(true);
       }
     };
+    const handleClickOutside = (event) => {
+      if (notificationRef.current && !notificationRef.current.contains(event.target)) {
+        setIsNotificationOpen(false);
+      }
+    };
+
     window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
   }, []);
 
   useEffect(() => {
@@ -199,6 +217,7 @@ const DashboardLayout = () => {
 
             <SectionHeader title="Products & Catalog" isOpen={isSidebarOpen} />
             <SidebarItem icon={Package} label={isSupplier ? "My Products" : "Products"} to="/products" isOpen={isSidebarOpen} />
+
             {isSupplier && (
               <>
                 <SidebarItem icon={FolderOpen} label="Categories" to="/categories" isOpen={isSidebarOpen} />
@@ -208,7 +227,11 @@ const DashboardLayout = () => {
 
             <SectionHeader title="Account" isOpen={isSidebarOpen} />
             {!isSupplier && (
-              <SidebarItem icon={Users} label="Suppliers" to="/suppliers" isOpen={isSidebarOpen} />
+              <>
+                <SidebarItem icon={Users} label="Suppliers" to="/suppliers" isOpen={isSidebarOpen} />
+                <SidebarItem icon={Users} label="Staff Management" to="/staff" isOpen={isSidebarOpen} />
+                <SidebarItem icon={Activity} label="Activity Logs" to="/activity-logs" isOpen={isSidebarOpen} />
+              </>
             )}
             <SidebarItem icon={Settings} label="Settings" to="/settings" isOpen={isSidebarOpen} />
           </nav>
@@ -269,10 +292,71 @@ const DashboardLayout = () => {
                 </span>
               )}
             </button>
-            <button className="text-slate-400 hover:text-blue-600 transition-colors relative hidden sm:block">
-              <Bell className="h-5 w-5" />
-              <span className="absolute -top-2 -right-2 flex h-4 w-4 items-center justify-center rounded-full bg-blue-600 ring-2 ring-white text-[9px] font-bold text-white">8</span>
-            </button>
+            <div className="relative hidden sm:block" ref={notificationRef}>
+              <button
+                className="text-slate-400 hover:text-blue-600 transition-colors relative"
+                onClick={() => setIsNotificationOpen(!isNotificationOpen)}
+              >
+                <Bell className="h-5 w-5" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-2 -right-2 flex h-4 w-4 items-center justify-center rounded-full bg-blue-600 ring-2 ring-white text-[9px] font-bold text-white">
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
+                )}
+              </button>
+
+              {isNotificationOpen && (
+                <div className="absolute right-0 mt-3 w-80 bg-white rounded-xl shadow-lg border border-slate-100 z-50 overflow-hidden transform origin-top-right transition-all flex flex-col max-h-[85vh]">
+                  <div className="px-4 py-3 border-b border-slate-100 flex justify-between items-center shrink-0">
+                    <h3 className="font-bold text-slate-800 text-sm">Notifications</h3>
+                    {unreadCount > 0 && (
+                      <span className="text-xs bg-blue-100 text-blue-600 font-semibold px-2 py-0.5 rounded-full">{unreadCount} new</span>
+                    )}
+                  </div>
+                  
+                  <div className="overflow-y-auto flex-1 sidebar-scroll">
+                    {notifications && notifications.length > 0 ? (
+                      <div className="divide-y divide-slate-50">
+                        {notifications.slice(0, 5).map(notif => (
+                          <div key={notif.id} className={`p-4 hover:bg-slate-50 cursor-pointer transition-colors ${!notif.is_read ? 'bg-blue-50/30' : ''}`} onClick={() => navigate('/notifications')}>
+                            <div className="flex items-start gap-3">
+                              <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center shrink-0 text-blue-600 mt-0.5">
+                                <Bell className="h-4 w-4" />
+                              </div>
+                              <div>
+                                <h4 className={`text-sm ${!notif.is_read ? 'font-bold text-slate-900' : 'font-medium text-slate-700'}`}>{notif.title}</h4>
+                                <p className={`text-xs mt-0.5 line-clamp-2 ${!notif.is_read ? 'text-slate-600 font-medium' : 'text-slate-500'}`}>{notif.message}</p>
+                                <p className="text-[10px] text-slate-400 mt-1 font-medium">{new Date(notif.created_at).toLocaleString()}</p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="py-12 flex flex-col items-center justify-center bg-slate-50">
+                        <div className="h-16 w-16 bg-white rounded-full flex items-center justify-center shadow-sm mb-3">
+                          <Bell className="h-8 w-8 text-slate-300" strokeWidth={1.5} />
+                        </div>
+                        <p className="text-sm font-semibold text-slate-700">No new notifications</p>
+                        <p className="text-xs text-slate-400 mt-1">You're all caught up!</p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="border-t border-slate-100 p-2 shrink-0">
+                    <button 
+                      onClick={() => {
+                        setIsNotificationOpen(false);
+                        navigate('/notifications');
+                      }}
+                      className="w-full py-2 text-sm font-semibold text-slate-600 hover:text-blue-600 hover:bg-slate-50 rounded-lg transition-colors"
+                    >
+                      View all notifications
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
             <button className="text-slate-400 hover:text-blue-600 transition-colors relative hidden sm:block">
               <Mail className="h-5 w-5" />
               <span className="absolute -top-2 -right-2 flex h-4 w-4 items-center justify-center rounded-full bg-blue-600 ring-2 ring-white text-[9px] font-bold text-white">12</span>
@@ -284,7 +368,9 @@ const DashboardLayout = () => {
                 className="h-9 w-9 rounded-full object-cover border-2 border-white shadow-sm"
               />
               <div className="ml-3 hidden sm:block">
-                <p className="text-sm font-bold text-slate-800 leading-none mb-1">{user?.first_name || 'Admin'} {user?.last_name || 'User'}</p>
+                <p className="text-sm font-bold text-slate-800 leading-none mb-1">
+                  {user?.company_name || `${user?.first_name || 'Admin'} ${user?.last_name || 'User'}`}
+                </p>
                 <p className="text-xs text-slate-500 font-medium">{user?.role === 'SUPPLIER' ? 'Supplier' : 'Admin'}</p>
               </div>
             </div>

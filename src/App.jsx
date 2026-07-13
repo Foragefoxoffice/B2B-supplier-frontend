@@ -13,6 +13,12 @@ import Settings from './pages/Settings';
 import Cart from './pages/Cart';
 import Transporters from './pages/Transporters';
 import OrderTracking from './pages/OrderTracking';
+import ForgotPassword from './pages/ForgotPassword';
+import VerifyOtp from './pages/VerifyOtp';
+import ResetPassword from './pages/ResetPassword';
+import Users from './pages/Users';
+import ActivityLogs from './pages/ActivityLogs';
+import Notifications from './pages/Notifications';
 
 function App() {
   return (
@@ -21,6 +27,9 @@ function App() {
         <Router>
           <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/verify-otp" element={<VerifyOtp />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
 
             {/* Protected Routes using Layout */}
             <Route element={<DashboardLayout />}>
@@ -33,6 +42,9 @@ function App() {
               <Route path="/cart" element={<Cart />} />
               <Route path="/transporters" element={<Transporters />} />
               <Route path="/order-tracking" element={<OrderTracking />} />
+              <Route path="/staff" element={<Users />} />
+              <Route path="/activity-logs" element={<ActivityLogs />} />
+              <Route path="/notifications" element={<Notifications />} />
             </Route>
 
             <Route path="/" element={<Navigate to="/dashboard" replace />} />

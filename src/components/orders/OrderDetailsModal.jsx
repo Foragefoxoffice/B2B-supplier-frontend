@@ -1,6 +1,7 @@
 import React from 'react';
 import { FileText, Package, X, Check, XCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import ImageZoomModal from '../common/ImageZoomModal';
 
 const getOrderedImageUrl = (item, orderRemarks) => {
     if (!item?.product?.images || item.product.images.length === 0) return null;
@@ -111,7 +112,7 @@ const OrderDetailsModal = ({ order, onClose, onUpdateStatus }) => {
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-4">
                                             <div className="w-16 h-16 rounded-xl bg-slate-50 border border-slate-100 overflow-hidden shrink-0 group-hover:border-blue-200 transition-colors">
-                                                <img src={getOrderedImageUrl(item, order.remarks) || `https://ui-avatars.com/api/?name=${item.product?.name || 'O'}&background=random&color=fff&rounded=false&size=128`} alt={item.product?.name} className="w-full h-full object-cover" />
+                                                <ImageZoomModal src={getOrderedImageUrl(item, order.remarks) || `https://ui-avatars.com/api/?name=${item.product?.name || 'O'}&background=random&color=fff&rounded=false&size=128`} alt={item.product?.name} className="w-full h-full object-cover" />
                                             </div>
                                             <div>
                                                 <h4 className="font-semibold text-slate-800 text-[16px] group-hover:text-blue-600 transition-colors">{item.product?.name || 'Product'}</h4>

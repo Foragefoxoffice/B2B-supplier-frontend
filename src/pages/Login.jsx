@@ -4,7 +4,7 @@ import {
   Mail, Lock, EyeOff, Eye, ArrowRight,
   Check, MapPin, FileText, Phone
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { loginApi } from '../commonApi/api';
 import toast from 'react-hot-toast';
 
@@ -75,7 +75,7 @@ const Login = () => {
               />
             </div>
             <h1 className="text-5xl font-bold tracking-wide text-white flex items-center gap-3 mt-2 justify-center">
-              Kannan <span className="text-blue-300">Silks</span>
+              Kannan <span className="bg-gradient-to-r from-[#D4AF37] via-[#FFF38C] to-[#D4AF37] bg-[length:200%_auto] animate-shine bg-clip-text text-transparent drop-shadow-sm">Silks</span>
             </h1>
             <p className="text-sm text-blue-200/90 mt-2 font-medium">B2B Supplier Management Platform.</p>
           </div>
@@ -229,9 +229,9 @@ const Login = () => {
                     Remember me
                   </label>
                 </div>
-                <a href="#" className="text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors">
+                <Link to="/forgot-password" className="text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors">
                   Forgot password?
-                </a>
+                </Link>
               </div>
 
               <button

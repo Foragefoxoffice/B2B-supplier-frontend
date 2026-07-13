@@ -40,6 +40,31 @@ export const getMeApi = async () => {
   return response.data;
 };
 
+export const forgotPasswordApi = async (email) => {
+  const response = await api.post('/auth/forgot-password', { email });
+  return response.data;
+};
+
+export const verifyOtpApi = async (email, otp) => {
+  const response = await api.post('/auth/verify-otp', { email, otp });
+  return response.data;
+};
+
+export const resetPasswordApi = async (email, otp, newPassword) => {
+  const response = await api.post('/auth/reset-password', { email, otp, newPassword });
+  return response.data;
+};
+
+export const changePasswordApi = async (data) => {
+  const response = await api.put('/auth/change-password', data);
+  return response.data;
+};
+
+export const updateProfileApi = async (data) => {
+  const response = await api.put('/auth/profile', data);
+  return response.data;
+};
+
 // ==========================
 // SUPPLIERS
 // ==========================
@@ -150,6 +175,11 @@ export const updateOrderStatusApi = async (id, status, remarks = '') => {
   return response.data;
 };
 
+export const deleteOrderApi = async (id) => {
+  const response = await api.delete(`/orders/${id}`);
+  return response.data;
+};
+
 // ==========================
 // SETTINGS
 // ==========================
@@ -186,5 +216,36 @@ export const deleteTransporterApi = async (id) => {
   return response.data;
 };
 
+// --- Activity Logs ---
+export const getActivityLogsApi = async (params) => {
+  const response = await api.get('/activity-logs', { params });
+  return response.data;
+};
+
+// --- Users (Admin/Staff) ---
+export const getUsersApi = async () => {
+  const response = await api.get('/users');
+  return response.data;
+};
+
+export const createUserApi = async (data) => {
+  const response = await api.post('/users', data);
+  return response.data;
+};
+
+export const updateUserApi = async (id, data) => {
+  const response = await api.put(`/users/${id}`, data);
+  return response.data;
+};
+
+export const deleteUserApi = async (id) => {
+  const response = await api.delete(`/users/${id}`);
+  return response.data;
+};
+
+export const getRolesApi = async () => {
+  const response = await api.get('/users/roles');
+  return response.data;
+};
 
 export default api;

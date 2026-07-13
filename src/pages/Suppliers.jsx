@@ -11,7 +11,7 @@ import toast from 'react-hot-toast';
 import ConfirmModal from '../components/common/ConfirmModal';
 import { getSuppliersApi, createSupplierApi, deleteSupplierApi, updateSupplierApi } from '../commonApi/api';
 import Modal from '../components/ui/Modal';
-
+import { TableRowsSkeleton } from '../components/common/SkeletonLoader';
 const Suppliers = () => {
   const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -87,7 +87,7 @@ const Suppliers = () => {
           status: s.status || (idx === 3 ? 'INACTIVE' : 'ACTIVE'), // Mock inactive for visual
           city: s.city || ['Salem', 'Coimbatore', 'Erode', 'Madurai', 'Tiruppur'][idx % 5],
           phone: s.phone || '+916383990217',
-          contactPerson: s.contactPerson || ['Mr. Ramesh Kumar', 'Ms. Meena', 'Mr. Prakash', 'Mr. S. Ranganathan', 'Ms. Nandhini'][idx % 5],
+          contactPerson: s.name || 'Mr. Ramesh Kumar',
           email: s.email || 'santhoshkathirvel007@gmail.com'
         }));
 
@@ -369,14 +369,7 @@ const Suppliers = () => {
             </thead>
             <tbody className="bg-white divide-y divide-slate-50">
               {loading ? (
-                <tr>
-                  <td colSpan="8" className="px-6 py-10 text-center text-sm text-slate-500">
-                    <div className="flex justify-center items-center">
-                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-                      <span className="ml-3 font-medium">Loading suppliers...</span>
-                    </div>
-                  </td>
-                </tr>
+                <TableRowsSkeleton columns={8} rows={8} />
               ) : suppliers.length === 0 ? (
                 <tr>
                   <td colSpan="8" className="px-6 py-10 text-center text-sm text-slate-500 font-medium">
@@ -398,13 +391,13 @@ const Suppliers = () => {
                           {supplier.initials}
                         </div>
                         <div className="ml-4">
-                          <div className="text-[14px] font-bold text-slate-900">{supplier.name}</div>
+                          <div className="text-[14px] font-semibold text-slate-900">{supplier.name}</div>
                           <div className="text-[13px] font-medium text-slate-500 mt-0.5">GSTIN: {supplier.gstin}</div>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-5 whitespace-nowrap">
-                      <div className="text-[14px] font-bold text-slate-700">{supplier.contactPerson}</div>
+                      <div className="text-[14px] font-semibold text-slate-700">{supplier.contactPerson}</div>
                       <div className="text-[13px] font-medium text-slate-500 mt-0.5">{supplier.email}</div>
                     </td>
                     <td className="px-6 py-5 whitespace-nowrap">
@@ -420,7 +413,7 @@ const Suppliers = () => {
                       </div>
                     </td>
                     <td className="px-6 py-5 whitespace-nowrap">
-                      <span className={`inline-flex items-center gap-1.5 px-3 py-1 text-[13px] font-bold rounded-full
+                      <span className={`inline-flex items-center gap-1.5 px-3 py-1 text-[13px] font-semibold rounded-full
                         ${supplier.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-700' :
                           supplier.status === 'PENDING' ? 'bg-amber-50 text-amber-700' :
                             'bg-red-50 text-red-700'}`}>
@@ -676,14 +669,14 @@ const Suppliers = () => {
             <button
               type="button"
               onClick={() => setIsModalOpen(false)}
-              className="px-4 py-2 border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors font-medium cursor-pointer"
+              className="px-4 py-2 border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition-colors font-medium cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-5 py-2.5 bg-[#2563EB] text-white rounded-xl hover:bg-blue-700 transition-colors text-[14px] font-bold disabled:opacity-50 cursor-pointer shadow-sm"
+              className="px-5 py-2.5 bg-[#2563EB] text-white rounded-xl hover:bg-blue-700 transition-colors text-[14px] font-medium disabled:opacity-50 cursor-pointer shadow-sm"
             >
               {isSubmitting ? 'Saving...' : (editingSupplier ? 'Update Supplier' : 'Save Supplier')}
             </button>

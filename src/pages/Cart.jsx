@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useCart } from '../store/CartContext';
 import {
-    ShoppingCart, Trash2, ArrowLeft, Package, Info,
-    ArrowRight, Save, ShieldCheck, ClipboardList,
-    Truck, Headset, RefreshCcw,
+    ShoppingCart, Trash2, ArrowLeft, Package, Info, ShieldCheck, ClipboardList,
+    Truck, Headset,
     LocateIcon
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { createOrderApi } from '../commonApi/api';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
+import ImageZoomModal from '../components/common/ImageZoomModal';
 
 import { getTransportersApi } from '../commonApi/api';
 import TruckButton from '../components/ui/TruckButton';
@@ -21,6 +21,47 @@ const Cart = () => {
     const [orderStatus, setOrderStatus] = useState('idle');
     const [supplierTransporters, setSupplierTransporters] = useState({});
     const [selectedTransporters, setSelectedTransporters] = useState({});
+    const [selectedSupplierId, setSelectedSupplierId] = useState(null);
+
+    const supplierGroups = React.useMemo(() => {
+        return cartItems.reduce((acc, item) => {
+            const sId = item.product.supplier_id;
+            if (!acc[sId]) {
+                acc[sId] = {
+                    supplierId: sId,
+                    supplierName: item.product.supplier?.name || `Supplier #${sId}`,
+                    items: [],
+                };
+            }
+            acc[sId].items.push(item);
+            return acc;
+        }, {});
+    }, [cartItems]);
+
+    useEffect(() => {
+        const sIds = Object.keys(supplierGroups);
+        if (sIds.length > 0 && (!selectedSupplierId || !sIds.includes(selectedSupplierId.toString()))) {
+            setSelectedSupplierId(parseInt(sIds[0]));
+        } else if (sIds.length === 0) {
+            setSelectedSupplierId(null);
+        }
+    }, [supplierGroups, selectedSupplierId]);
+
+    const selectedGroup = React.useMemo(() => selectedSupplierId ? supplierGroups[selectedSupplierId] : null, [selectedSupplierId, supplierGroups]);
+    const selectedItems = React.useMemo(() => selectedGroup ? selectedGroup.items : [], [selectedGroup]);
+
+    const selectedStats = React.useMemo(() => {
+        return selectedItems.reduce((stats, item) => {
+            stats.totalItems += item.quantity;
+            const itemSubtotal = item.quantity * parseFloat(item.product.price || 0);
+            const gstPercent = parseFloat(item.product.gst) || 5;
+            const gstAmount = itemSubtotal * (gstPercent / 100);
+            stats.subtotal += itemSubtotal;
+            stats.gstTotal += gstAmount;
+            stats.grandTotal += (itemSubtotal + gstAmount);
+            return stats;
+        }, { totalItems: 0, subtotal: 0, gstTotal: 0, grandTotal: 0 });
+    }, [selectedItems]);
 
     // Order details state
     const [orderGivenBy, setOrderGivenBy] = useState('');
@@ -49,49 +90,34 @@ const Cart = () => {
     }, [cartItems]);
 
     const handlePlaceOrder = async () => {
-        if (cartItems.length === 0) {
-            toast.error('Cart is empty.');
+        if (!selectedSupplierId || selectedItems.length === 0) {
+            toast.error('No items selected for checkout.');
             return;
         }
 
         try {
             setIsSubmitting(true);
-            let successCount = 0;
 
-            const supplierGroups = {};
-            for (const item of cartItems) {
-                const sId = item.product.supplier_id;
-                if (!supplierGroups[sId]) supplierGroups[sId] = [];
-                supplierGroups[sId].push(item);
-            }
+            const payload = {
+                supplier_id: selectedSupplierId,
+                transporter_id: selectedTransporters[selectedSupplierId] || null,
+                order_given_by: orderGivenBy,
+                phone_number: phoneNumber,
+                remarks: orderRemarks,
+                items: selectedItems.map(item => ({
+                    product_id: item.product.id,
+                    variant_id: item.variant.id,
+                    quantity: item.quantity,
+                    rate: item.product.price,
+                    remarks: `Color: ${item.variant.color || 'Default'}${item.remarks ? ` | Notes: ${item.remarks}` : ''}`
+                }))
+            };
 
-            for (const sId of Object.keys(supplierGroups)) {
-                const items = supplierGroups[sId];
-                const payload = {
-                    supplier_id: parseInt(sId),
-                    transporter_id: selectedTransporters[sId] || null,
-                    order_given_by: orderGivenBy,
-                    phone_number: phoneNumber,
-                    remarks: orderRemarks,
-                    items: items.map(item => ({
-                        product_id: item.product.id,
-                        variant_id: item.variant.id,
-                        quantity: item.quantity,
-                        rate: item.product.price,
-                        remarks: `Color: ${item.variant.color || 'Default'}${item.remarks ? ` | Notes: ${item.remarks}` : ''}`
-                    }))
-                };
-
-                const data = await createOrderApi(payload);
-                if (data.success) {
-                    successCount++;
-                }
-            }
-
-            if (successCount > 0) {
+            const data = await createOrderApi(payload);
+            if (data.success) {
                 setOrderStatus('success');
             } else {
-                toast.error('Failed to place orders. Please try again.');
+                toast.error('Failed to place order. Please try again.');
                 setOrderStatus('idle');
             }
         } catch (error) {
@@ -156,7 +182,7 @@ const Cart = () => {
                 <div className="flex items-center justify-between mb-2">
                     <div>
                         <h1 className="text-2xl font-semibold text-navy-dark flex items-baseline gap-2">
-                            My Cart <span className="text-sm font-medium text-slate-500">({cartStats.totalItems} Items)</span>
+                            My Cart <span className="text-sm font-medium text-slate-500">({cartItems.length} Items)</span>
                         </h1>
                         <p className="text-sm text-slate-500 mt-1">Review your selected products before placing an order.</p>
                     </div>
@@ -179,115 +205,126 @@ const Cart = () => {
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <div className="lg:col-span-2">
-                        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 mb-6">
-                            {/* Table Header */}
-                            <div className="hidden md:grid grid-cols-12 text-md font-semibold text-navy-dark border-b border-slate-100 pb-4 mb-4">
-                                <div className="col-span-6">Product</div>
-                                <div className="col-span-2 text-center">Price</div>
-                                <div className="col-span-2 text-center">Quantity</div>
-                                <div className="col-span-2 text-right">Total</div>
-                            </div>
-
-                            {/* Cart Items */}
-                            <div className="space-y-2">
-                                {cartItems.map(item => {
-                                    const itemTotal = item.quantity * parseFloat(item.product.price);
-                                    return (
-                                        <div key={item.variant.id} className="grid grid-cols-1 md:grid-cols-12 items-center py-5 border-b border-slate-50 last:border-0 relative group gap-4 md:gap-0">
-                                            {/* Product Col */}
-                                            <div className="col-span-1 md:col-span-6 flex gap-4">
-                                                <div className="w-20 h-24 shrink-0 rounded-xl overflow-hidden bg-slate-50 border border-slate-100 relative">
-                                                    {item.variant.url ? (
-                                                        <img src={`http://localhost:5000${item.variant.url}`} alt={item.product.name} className="w-full h-full object-cover" />
-                                                    ) : (
-                                                        <div className="w-full h-full flex items-center justify-center"><Package className="w-6 h-6 text-slate-300" /></div>
-                                                    )}
-                                                </div>
-                                                <div className="flex flex-col justify-center">
-                                                    <h3 className="font-semibold text-navy-dark text-[16px] leading-tight mb-1" title={item.product.name}>
-                                                        {item.product.name}
-                                                    </h3>
-                                                    <p className="text-[13px] text-slate-500">{item.product.category?.name || item.variant.color || 'Premium Quality'}</p>
-                                                    <p className="text-[12px] text-slate-400 mt-1">SKU: {item.product.product_code}</p>
-                                                </div>
-                                            </div>
-
-                                            {/* Price Col */}
-                                            <div className="col-span-1 md:col-span-2 flex justify-between md:block md:text-center font-semibold text-slate-800">
-                                                <span className="md:hidden text-slate-500 font-normal">Price</span>
-                                                ₹ {parseFloat(item.product.price).toLocaleString('en-IN', { minimumFractionDigits: 0 })}
-                                            </div>
-
-                                            {/* Quantity Col */}
-                                            <div className="col-span-1 md:col-span-2 flex items-center justify-between md:flex-col md:justify-center gap-2 md:gap-0">
-                                                <span className="md:hidden text-slate-500 font-normal">Quantity</span>
-                                                <div className="flex items-center justify-between border border-slate-200 rounded-lg px-1 py-0.5 h-10 w-24">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => updateQuantity(item.variant.id, item.quantity - 1, item.variant.quantity)}
-                                                        className="text-slate-500 hover:text-navy-dark hover:bg-slate-100 rounded w-8 h-8 flex items-center justify-center text-lg font-medium transition-all"
-                                                    >
-                                                        -
-                                                    </button>
-                                                    <input
-                                                        type="text"
-                                                        value={item.quantity}
-                                                        onChange={(e) => updateQuantity(item.variant.id, parseInt(e.target.value) || 1, item.variant.quantity)}
-                                                        className="w-8 text-center bg-transparent border-0 outline-none font-bold text-sm text-slate-800 focus:ring-0 p-0"
-                                                    />
-                                                    <button
-                                                        type="button"
-                                                        disabled={item.quantity >= item.variant.quantity}
-                                                        onClick={() => updateQuantity(item.variant.id, item.quantity + 1, item.variant.quantity)}
-                                                        className="text-slate-500 hover:text-navy-dark hover:bg-slate-100 rounded w-8 h-8 flex items-center justify-center text-lg font-medium disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-                                                    >
-                                                        +
-                                                    </button>
-                                                </div>
-                                                <div className="text-[11px] font-medium text-emerald-500 md:mt-1.5 hidden md:block">
-                                                    Stock: {item.variant.quantity}+ pcs
-                                                </div>
-                                            </div>
-
-                                            {/* Total & Delete Col */}
-                                            <div className="col-span-1 md:col-span-2 flex items-center justify-between md:justify-end gap-4 relative">
-                                                <span className="md:hidden text-slate-500 font-normal">Total</span>
-                                                <div className="flex items-center gap-3">
-                                                    <span className="font-bold text-navy-dark text-[15px]">
-                                                        ₹ {itemTotal.toLocaleString('en-IN', { minimumFractionDigits: 0 })}
-                                                    </span>
-                                                    <button
-                                                        onClick={() => removeFromCart(item.variant.id)}
-                                                        className="w-9 h-9 flex items-center justify-center text-rose-400 border border-rose-100 hover:bg-rose-50 hover:text-rose-600 rounded-lg transition-colors md:ml-2 shrink-0"
-                                                        title="Remove item"
-                                                    >
-                                                        <Trash2 className="w-4 h-4" />
-                                                    </button>
-                                                </div>
-                                            </div>
+                    <div className="lg:col-span-2 sticky top-6 self-start h-fit max-h-[calc(100vh-3rem)] overflow-y-auto no-scrollbar">
+                        {Object.values(supplierGroups).map(group => {
+                            const isSelected = selectedSupplierId === group.supplierId;
+                            return (
+                                <div
+                                    key={group.supplierId}
+                                    className={`bg-white rounded-2xl border shadow-sm p-6 mb-6 transition-all cursor-pointer ${isSelected ? 'border-blue-500 ring-1 ring-blue-500' : 'border-slate-100'}`}
+                                    onClick={() => setSelectedSupplierId(group.supplierId)}
+                                >
+                                    <div className="flex justify-between items-center mb-4 pb-4 border-b border-slate-100">
+                                        <div className="flex items-center gap-3">
+                                            <input type="radio" checked={isSelected} readOnly className="w-5 h-5 text-blue-600 focus:ring-blue-500 cursor-pointer" />
+                                            <h3 className="font-semibold text-navy-dark text-lg">{group.supplierName}</h3>
                                         </div>
-                                    );
-                                })}
-                            </div>
+                                        <span className="text-sm font-medium text-slate-500">{group.items.length} Products</span>
+                                    </div>
 
-                            {/* Cart Actions */}
-                            <div className="flex items-center justify-between mt-6 pt-6 border-t border-slate-100">
-                                <button
-                                    onClick={clearCart}
-                                    className="flex items-center gap-2 px-5 py-2.5 border border-rose-200 text-rose-500 font-semibold rounded-xl hover:bg-rose-50 transition-colors text-sm"
-                                >
-                                    <Trash2 className="w-4 h-4" />
-                                    Clear Cart
-                                </button>
+                                    {/* Table Header */}
+                                    <div className="hidden md:grid grid-cols-12 text-md font-semibold text-navy-dark border-b border-slate-100 pb-4 mb-4">
+                                        <div className="col-span-6">Product</div>
+                                        <div className="col-span-2 text-center">Price</div>
+                                        <div className="col-span-2 text-center">Quantity</div>
+                                        <div className="col-span-2 text-right">Total</div>
+                                    </div>
 
-                                <button
-                                    className="flex items-center gap-2 px-5 py-2.5 border border-blue-200 text-blue-600 font-semibold rounded-xl hover:bg-blue-50 transition-colors text-sm"
-                                >
-                                    <RefreshCcw className="w-4 h-4" />
-                                    Update Cart
-                                </button>
-                            </div>
+                                    {/* Cart Items */}
+                                    <div className="space-y-2">
+                                        {group.items.map(item => {
+                                            const itemTotal = item.quantity * parseFloat(item.product.price);
+                                            return (
+                                                <div key={item.variant.id} className="grid grid-cols-1 md:grid-cols-12 items-center py-5 border-b border-slate-50 last:border-0 relative group gap-4 md:gap-0">
+                                                    {/* Product Col */}
+                                                    <div className="col-span-1 md:col-span-6 flex gap-4">
+                                                        <div className="w-20 h-24 shrink-0 rounded-xl overflow-hidden bg-slate-50 border border-slate-100 relative">
+                                                            {item.variant.url ? (
+                                                                <ImageZoomModal src={`http://localhost:5000${item.variant.url}`} alt={item.product.name} className="w-full h-full object-cover" />
+                                                            ) : (
+                                                                <div className="w-full h-full flex items-center justify-center"><Package className="w-6 h-6 text-slate-300" /></div>
+                                                            )}
+                                                        </div>
+                                                        <div className="flex flex-col justify-center">
+                                                            <h3 className="font-semibold text-navy-dark text-[16px] leading-tight mb-1" title={item.product.name}>
+                                                                {item.product.name}
+                                                            </h3>
+                                                            <p className="text-[13px] text-slate-500">{item.product.category?.name || item.variant.color || 'Premium Quality'}</p>
+                                                            <p className="text-[12px] text-slate-400 mt-1">SKU: {item.product.product_code}</p>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Price Col */}
+                                                    <div className="col-span-1 md:col-span-2 flex justify-between md:block md:text-center font-semibold text-slate-800">
+                                                        <span className="md:hidden text-slate-500 font-normal">Price</span>
+                                                        ₹ {parseFloat(item.product.price).toLocaleString('en-IN', { minimumFractionDigits: 0 })}
+                                                    </div>
+
+                                                    {/* Quantity Col */}
+                                                    <div className="col-span-1 md:col-span-2 flex items-center justify-between md:flex-col md:justify-center gap-2 md:gap-0">
+                                                        <span className="md:hidden text-slate-500 font-normal">Quantity</span>
+                                                        <div className="flex items-center justify-between border border-slate-200 rounded-lg px-1 py-0.5 h-10 w-24">
+                                                            <button
+                                                                type="button"
+                                                                onClick={(e) => { e.stopPropagation(); updateQuantity(item.variant.id, item.quantity - 1, item.variant.quantity); }}
+                                                                className="text-slate-500 hover:text-navy-dark hover:bg-slate-100 rounded w-8 h-8 flex items-center justify-center text-lg font-medium transition-all"
+                                                            >
+                                                                -
+                                                            </button>
+                                                            <input
+                                                                type="text"
+                                                                value={item.quantity}
+                                                                onChange={(e) => { e.stopPropagation(); updateQuantity(item.variant.id, parseInt(e.target.value) || 1, item.variant.quantity); }}
+                                                                onClick={(e) => e.stopPropagation()}
+                                                                className="w-8 text-center bg-transparent border-0 outline-none font-bold text-sm text-slate-800 focus:ring-0 p-0"
+                                                            />
+                                                            <button
+                                                                type="button"
+                                                                disabled={item.quantity >= item.variant.quantity}
+                                                                onClick={(e) => { e.stopPropagation(); updateQuantity(item.variant.id, item.quantity + 1, item.variant.quantity); }}
+                                                                className="text-slate-500 hover:text-navy-dark hover:bg-slate-100 rounded w-8 h-8 flex items-center justify-center text-lg font-medium disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                                                            >
+                                                                +
+                                                            </button>
+                                                        </div>
+                                                        <div className="text-[11px] font-medium text-emerald-500 md:mt-1.5 hidden md:block">
+                                                            Stock: {item.variant.quantity}+ pcs
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Total & Delete Col */}
+                                                    <div className="col-span-1 md:col-span-2 flex items-center justify-between md:justify-end gap-4 relative">
+                                                        <span className="md:hidden text-slate-500 font-normal">Total</span>
+                                                        <div className="flex items-center gap-3">
+                                                            <span className="font-bold text-navy-dark text-[15px]">
+                                                                ₹ {itemTotal.toLocaleString('en-IN', { minimumFractionDigits: 0 })}
+                                                            </span>
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); removeFromCart(item.variant.id); }}
+                                                                className="w-9 h-9 flex items-center justify-center text-rose-400 border border-rose-100 hover:bg-rose-50 hover:text-rose-600 rounded-lg transition-colors md:ml-2 shrink-0"
+                                                                title="Remove item"
+                                                            >
+                                                                <Trash2 className="w-4 h-4" />
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            );
+                        })}
+
+                        {/* Global Cart Actions */}
+                        <div className="flex items-center justify-between mt-2 mb-8 px-2">
+                            <button
+                                onClick={clearCart}
+                                className="flex items-center gap-2 px-5 py-2.5 border border-rose-200 text-rose-500 font-semibold rounded-xl hover:bg-rose-50 transition-colors text-sm bg-white"
+                            >
+                                <Trash2 className="w-4 h-4" />
+                                Clear Entire Cart
+                            </button>
                         </div>
                     </div>
 
@@ -297,8 +334,8 @@ const Cart = () => {
 
                             <div className="space-y-4 text-sm mb-6">
                                 <div className="flex justify-between items-center text-slate-600">
-                                    <span>Subtotal ({cartStats.totalItems} Items)</span>
-                                    <span className="font-semibold text-navy-dark">₹ {cartStats.subtotal.toLocaleString('en-IN', { minimumFractionDigits: 0 })}</span>
+                                    <span>Subtotal ({selectedStats.totalItems} Items)</span>
+                                    <span className="font-semibold text-navy-dark">₹ {selectedStats.subtotal.toLocaleString('en-IN', { minimumFractionDigits: 0 })}</span>
                                 </div>
 
                                 <div className="flex justify-between items-center text-slate-600">
@@ -308,7 +345,7 @@ const Cart = () => {
 
                                 <div className="flex justify-between items-center text-slate-600 border-b border-slate-100 pb-4">
                                     <span>GST (5%)</span>
-                                    <span className="font-semibold text-navy-dark">₹ {cartStats.gstTotal.toLocaleString('en-IN', { minimumFractionDigits: 0 })}</span>
+                                    <span className="font-semibold text-navy-dark">₹ {selectedStats.gstTotal.toLocaleString('en-IN', { minimumFractionDigits: 0 })}</span>
                                 </div>
 
                                 <div className="flex justify-between items-center pt-2">
@@ -316,7 +353,7 @@ const Cart = () => {
                                         <div className="font-semibold text-navy-dark text-[17px]">Total Amount</div>
                                         <div className="text-[11px] text-slate-500 mt-0.5">Incl. of GST</div>
                                     </div>
-                                    <span className="font-semibold text-navy-dark text-xl">₹ {cartStats.grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 0 })}</span>
+                                    <span className="font-semibold text-navy-dark text-xl">₹ {selectedStats.grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 0 })}</span>
                                 </div>
                             </div>
 
@@ -365,41 +402,31 @@ const Cart = () => {
                                 </div>
                             </div>
 
-                            {Object.keys(supplierTransporters).length > 0 && (
+                            {selectedSupplierId && supplierTransporters[selectedSupplierId] && supplierTransporters[selectedSupplierId].length > 0 && (
                                 <div className="mb-6 space-y-3 p-4 bg-slate-50 border border-slate-100 rounded-xl">
                                     <h3 className="text-sm font-semibold text-navy-dark flex items-center gap-2">
                                         <Truck className="w-4 h-4 text-slate-500" />
                                         Select Transporter
                                     </h3>
-                                    {Object.keys(supplierTransporters).map(supplierId => {
-                                        const supplierName = cartItems.find(item => item.product?.supplier_id === parseInt(supplierId))?.product?.supplier?.name || `Supplier #${supplierId}`;
-                                        const transporters = supplierTransporters[supplierId];
-
-                                        if (!transporters || transporters.length === 0) return null;
-
-                                        return (
-                                            <div key={supplierId} className="flex flex-col gap-1.5">
-                                                <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">For {supplierName}</label>
-                                                <select
-                                                    value={selectedTransporters[supplierId] || ''}
-                                                    onChange={(e) => setSelectedTransporters({ ...selectedTransporters, [supplierId]: e.target.value })}
-                                                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500"
-                                                >
-                                                    <option value="">-- Let Supplier Decide --</option>
-                                                    {transporters.map(t => (
-                                                        <option key={t.id} value={t.id}>{t.name}</option>
-                                                    ))}
-                                                </select>
-                                            </div>
-                                        );
-                                    })}
+                                    <div className="flex flex-col gap-1.5">
+                                        <select
+                                            value={selectedTransporters[selectedSupplierId] || ''}
+                                            onChange={(e) => setSelectedTransporters({ ...selectedTransporters, [selectedSupplierId]: e.target.value })}
+                                            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500"
+                                        >
+                                            <option value="">-- Let Supplier Decide --</option>
+                                            {supplierTransporters[selectedSupplierId].map(t => (
+                                                <option key={t.id} value={t.id}>{t.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
                                 </div>
                             )}
 
                             <div className="space-y-3">
                                 <TruckButton
                                     onClick={handlePlaceOrder}
-                                    disabled={cartItems.length === 0 || isSubmitting}
+                                    disabled={!selectedSupplierId || selectedItems.length === 0 || isSubmitting}
                                     className="w-full bg-active-btn !text-white h-12"
                                     successText="Order Processed!"
                                 >
@@ -577,7 +604,8 @@ const Cart = () => {
                             >
                                 <button
                                     onClick={() => {
-                                        clearCart();
+                                        selectedItems.forEach(item => removeFromCart(item.variant.id));
+                                        setOrderStatus('idle');
                                         navigate('/orders');
                                     }}
                                     className="w-full bg-active-btn flex items-center justify-center gap-2 text-white font-medium py-3.5 rounded-xl hover:bg-blue-700 transition-colors shadow-md shadow-blue-200"
@@ -586,8 +614,11 @@ const Cart = () => {
                                 </button>
                                 <button
                                     onClick={() => {
-                                        clearCart();
-                                        navigate('/products');
+                                        selectedItems.forEach(item => removeFromCart(item.variant.id));
+                                        setOrderStatus('idle');
+                                        if (cartItems.length === selectedItems.length) {
+                                            navigate('/products');
+                                        }
                                     }}
                                     className="w-full flex items-center justify-center gap-2 bg-slate-50 text-slate-700 font-semibold py-3.5 rounded-xl hover:bg-slate-100 transition-colors border border-slate-200"
                                 >

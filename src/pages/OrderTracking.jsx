@@ -4,6 +4,8 @@ import { Search, Calendar, RefreshCcw, FileText, CheckCircle, Package, Truck, XC
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import OrderDetailsModal from '../components/orders/OrderDetailsModal';
+import ImageZoomModal from '../components/common/ImageZoomModal';
+import { TableRowsSkeleton } from '../components/common/SkeletonLoader';
 
 
 const getFrontImageUrl = (item) => {
@@ -30,7 +32,27 @@ const OrderTracking = () => {
 
     useEffect(() => {
         fetchOrders();
+
+        const handleNotification = (e) => {
+            const type = e.detail?.type;
+            if (['ORDER_UPDATE', 'NEW_PO'].includes(type)) {
+                fetchOrders();
+            }
+        };
+        window.addEventListener('app_notification', handleNotification);
+        return () => window.removeEventListener('app_notification', handleNotification);
     }, [appliedSearch, statusFilter, appliedStartDate, appliedEndDate, page, limit]);
+
+    useEffect(() => {
+        setSelectedOrder(prev => {
+            if (!prev) return prev;
+            const fresh = orders.find(o => o.id === prev.id);
+            if (fresh && JSON.stringify(fresh) !== JSON.stringify(prev)) {
+                return fresh;
+            }
+            return prev;
+        });
+    }, [orders]);
 
     const fetchOrders = async () => {
         try {
@@ -220,7 +242,7 @@ const OrderTracking = () => {
                     <motion.h1
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
-                        className="text-3xl font-semibold text-slate-800 tracking-tight flex items-center"
+                        className="text-2xl font-semibold text-slate-800 tracking-tight flex items-center"
                     >
                         <LocateFixedIcon className='text-blue-600 mr-2 w-8 h-8 ' /> Order Tracking
                     </motion.h1>
@@ -340,19 +362,6 @@ const OrderTracking = () => {
                 className="bg-white rounded-2xl shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-slate-100 overflow-hidden relative min-h-[400px]"
             >
                 <AnimatePresence>
-                    {loading && (
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            className="absolute inset-0 bg-white/60 z-20 flex items-center justify-center backdrop-blur-sm"
-                        >
-                            <div className="flex flex-col items-center gap-3">
-                                <div className="animate-spin h-10 w-10 border-4 border-blue-600 border-t-transparent rounded-full shadow-lg"></div>
-                                <p className="text-sm font-medium text-slate-600">Loading orders...</p>
-                            </div>
-                        </motion.div>
-                    )}
                 </AnimatePresence>
 
                 <div className="overflow-x-auto">
@@ -369,7 +378,9 @@ const OrderTracking = () => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
-                            {orders.length === 0 && !loading ? (
+                            {loading ? (
+                                <TableRowsSkeleton columns={7} rows={8} />
+                            ) : orders.length === 0 ? (
                                 <tr>
                                     <td colSpan="7" className="px-6 py-16 text-center">
                                         <div className="flex flex-col items-center justify-center text-slate-400">
@@ -406,7 +417,7 @@ const OrderTracking = () => {
                                                 <td className="px-6 py-4">
                                                     <div className="flex items-center gap-4">
                                                         <div className="w-12 h-12 rounded-xl bg-slate-50 flex-shrink-0 flex items-center justify-center overflow-hidden border border-slate-200 group-hover:border-blue-200 group-hover:shadow-md transition-all">
-                                                            <img src={getFrontImageUrl(order.items?.[0]) || `https://ui-avatars.com/api/?name=${firstItem?.name || 'O'}&background=random&color=fff&rounded=false&size=128`} alt={firstItem?.name} className="w-full h-full object-cover" />
+                                                            <ImageZoomModal src={getFrontImageUrl(order.items?.[0]) || `https://ui-avatars.com/api/?name=${firstItem?.name || 'O'}&background=random&color=fff&rounded=false&size=128`} alt={firstItem?.name} className="w-full h-full object-cover" />
                                                         </div>
                                                         <div>
                                                             <div className="flex items-center gap-2 mb-1">

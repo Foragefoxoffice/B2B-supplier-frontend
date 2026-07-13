@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { ArrowLeft, ShoppingCart, CheckCircle, Info, Heart } from 'lucide-react';
-import TruckButton from '../components/ui/TruckButton';
+import { ArrowLeft, ShoppingCart, CheckCircle, Info, Calendar } from 'lucide-react';
 import { useCart } from '../store/CartContext';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import ImageZoomModal from '../components/common/ImageZoomModal';
 
 const ProductGallery = ({
     product,
@@ -131,7 +131,7 @@ const ProductGallery = ({
                         <div key={variant.id} className={`bg-white rounded-2xl overflow-hidden transition-all duration-300 flex flex-col ${qty > 0 ? 'border-blue-600 shadow-sm ring-1 ring-blue-600/20' : 'border border-slate-100 shadow-xs hover:shadow-md'}`}>
                             {/* Image Section */}
                             <div className="w-full aspect-square bg-slate-50 relative group overflow-hidden border-b border-slate-50">
-                                <img
+                                <ImageZoomModal
                                     src={`http://localhost:5000${variant.url}`}
                                     alt={variant.color}
                                     className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 ${isOutOfStock ? 'opacity-70 grayscale-[30%]' : ''}`}
@@ -161,13 +161,19 @@ const ProductGallery = ({
                                 </div>
                                 <h3 className="font-semibold text-navy-dark text-[16px] leading-tight mb-2 truncate" title={product.name}>{product.name}</h3>
 
-                                <div className="flex items-center gap-2 mb-4">
+                                <div className="flex flex-wrap items-center gap-2 mb-4">
                                     <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded uppercase">
                                         CODE: {product.product_code}
                                     </span>
                                     <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded uppercase">
                                         {product.material || 'PURE SILK'}
                                     </span>
+                                    {variant.created_at && (
+                                        <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded uppercase flex items-center gap-1">
+                                            <Calendar className="w-3 h-3" />
+                                            {new Date(variant.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                        </span>
+                                    )}
                                 </div>
 
                                 <div className="flex items-end justify-between mb-4 border-t border-slate-100 pt-3 mt-auto">

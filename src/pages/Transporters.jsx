@@ -3,6 +3,7 @@ import { getTransportersApi, createTransporterApi, updateTransporterApi, deleteT
 import toast from 'react-hot-toast';
 import { Truck, Plus, Edit2, Trash2, X, TruckIcon } from 'lucide-react';
 import ConfirmModal from '../components/common/ConfirmModal';
+import { TableSkeleton } from '../components/common/SkeletonLoader';
 
 const Transporters = () => {
   const [transporters, setTransporters] = useState([]);
@@ -96,9 +97,7 @@ const Transporters = () => {
 
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
         {loading ? (
-          <div className="flex items-center justify-center h-48">
-            <div className="animate-spin h-6 w-6 text-blue-600 rounded-full border-2 border-slate-200 border-t-blue-600"></div>
-          </div>
+          <TableSkeleton columns={5} rows={8} />
         ) : transporters.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-48 text-slate-500">
             <Truck className="w-12 h-12 text-slate-300 mb-3" />

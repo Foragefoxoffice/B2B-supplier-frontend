@@ -1,19 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { getOrdersApi, updateOrderStatusApi } from '../commonApi/api';
+import { getOrdersApi, updateOrderStatusApi, deleteOrderApi } from '../commonApi/api';
 import {
   FileText, XCircle, Search, Calendar, ChevronDown,
-  RefreshCw, FileClock, Users, CalendarDays, Receipt, Check, X,
-  MoreVertical, Download, Package, Truck,
-  CheckCircle
+  RefreshCw, FileClock, Users, CalendarDays, Receipt, Check, Download, Package,
+  CheckCircle, Trash2
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ConfirmModal from '../components/common/ConfirmModal';
 import OrderDetailsModal from '../components/orders/OrderDetailsModal';
-
+import ImageZoomModal from '../components/common/ImageZoomModal';
+import { TableRowsSkeleton } from '../components/common/SkeletonLoader';
 const Orders = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [confirmState, setConfirmState] = useState({ isOpen: false, orderId: null, status: null });
+  const [deleteConfirmState, setDeleteConfirmState] = useState({ isOpen: false, orderId: null });
   const [cancelRemarks, setCancelRemarks] = useState('');
   const [selectedOrder, setSelectedOrder] = useState(null);
 
@@ -35,7 +36,27 @@ const Orders = () => {
 
   useEffect(() => {
     fetchOrders();
+
+    const handleNotification = (e) => {
+      const type = e.detail?.type;
+      if (['ORDER_UPDATE', 'NEW_PO'].includes(type)) {
+        fetchOrders();
+      }
+    };
+    window.addEventListener('app_notification', handleNotification);
+    return () => window.removeEventListener('app_notification', handleNotification);
   }, [page, limit]);
+
+  useEffect(() => {
+    setSelectedOrder(prev => {
+      if (!prev) return prev;
+      const fresh = orders.find(o => o.id === prev.id);
+      if (fresh && JSON.stringify(fresh) !== JSON.stringify(prev)) {
+        return fresh;
+      }
+      return prev;
+    });
+  }, [orders]);
 
   const fetchOrders = async () => {
     try {
@@ -103,6 +124,19 @@ const Orders = () => {
       toast.error('Failed to update order status.');
     } finally {
       setConfirmState({ isOpen: false, orderId: null, status: null });
+    }
+  };
+
+  const confirmDeleteOrder = async () => {
+    try {
+      await deleteOrderApi(deleteConfirmState.orderId);
+      toast.success('Order deleted successfully!');
+      fetchOrders();
+    } catch (error) {
+      console.error('Error deleting order:', error);
+      toast.error('Failed to delete order.');
+    } finally {
+      setDeleteConfirmState({ isOpen: false, orderId: null });
     }
   };
 
@@ -227,7 +261,7 @@ const Orders = () => {
 
 
         {/* PO Date Range */}
-        <div className="w-[280px] shrink-0">
+        <div className="w-[320px] shrink-0">
           <label className="block text-[14px] font-semibold text-slate-600 mb-1.5">PO Date Range</label>
           <div className="relative flex items-center border border-slate-200 rounded-lg bg-white focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500 transition-colors overflow-hidden h-[38px]">
             <div className="pl-3 py-2 flex items-center justify-center text-slate-400 border-r border-slate-200 pr-2 bg-slate-50 h-full">
@@ -235,16 +269,18 @@ const Orders = () => {
             </div>
             <input
               type="date"
-              className="flex-1 px-2 py-2 text-[13px] border-none outline-none bg-transparent h-full w-full"
+              className="flex-1 px-2 py-2 text-[13px] border-none outline-none bg-transparent h-full w-full [&::-webkit-calendar-picker-indicator]:hidden cursor-pointer"
               value={dateRange.startDate}
               onChange={(e) => setDateRange({ ...dateRange, startDate: e.target.value })}
+              onClick={(e) => e.target.showPicker && e.target.showPicker()}
             />
-            <span className="text-slate-300">-</span>
+            <span className="text-slate-300 mx-1">-</span>
             <input
               type="date"
-              className="flex-1 px-2 py-2 text-[13px] border-none outline-none bg-transparent h-full w-full"
+              className="flex-1 px-2 py-2 text-[13px] border-none outline-none bg-transparent h-full w-full [&::-webkit-calendar-picker-indicator]:hidden cursor-pointer"
               value={dateRange.endDate}
               onChange={(e) => setDateRange({ ...dateRange, endDate: e.target.value })}
+              onClick={(e) => e.target.showPicker && e.target.showPicker()}
             />
           </div>
         </div>
@@ -334,7 +370,7 @@ const Orders = () => {
             </thead>
             <tbody className="divide-y divide-slate-100 text-[13px]">
               {loading ? (
-                <tr><td colSpan="7" className="px-6 py-10 text-center text-slate-500">Loading orders...</td></tr>
+                <TableRowsSkeleton columns={7} rows={8} />
               ) : orders.length === 0 ? (
                 <tr><td colSpan="7" className="px-6 py-10 text-center text-slate-500">No purchase orders found.</td></tr>
               ) : (
@@ -353,7 +389,7 @@ const Orders = () => {
                         <div className="flex items-center gap-3">
                           <div className="h-12 w-12 rounded-lg bg-slate-100 flex-shrink-0 border border-slate-200 overflow-hidden">
                             {itemImage ? (
-                              <img src={`http://localhost:5000${itemImage}`} alt={firstItem?.name} className="h-full w-full object-cover" />
+                              <ImageZoomModal src={`http://localhost:5000${itemImage}`} alt={firstItem?.name} className="h-full w-full object-cover" />
                             ) : (
                               <div className="h-full w-full flex items-center justify-center text-slate-400">
                                 <FileText size={20} />
@@ -428,8 +464,8 @@ const Orders = () => {
                             </>
                           )}
 
-                          <button className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-md transition-colors border border-slate-200 ml-1">
-                            <MoreVertical size={16} />
+                          <button onClick={() => setDeleteConfirmState({ isOpen: true, orderId: order.id })} className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors ml-1" title="Delete Order">
+                            <Trash2 size={16} />
                           </button>
                         </div>
                       </td>
@@ -524,6 +560,17 @@ const Orders = () => {
           </div>
         )}
       </ConfirmModal>
+
+      <ConfirmModal
+        isOpen={deleteConfirmState.isOpen}
+        title="Delete Order"
+        message="Are you sure you want to delete this order? This action cannot be undone."
+        onConfirm={confirmDeleteOrder}
+        onCancel={() => setDeleteConfirmState({ isOpen: false, orderId: null })}
+        confirmText="Delete"
+        confirmVariant="danger"
+      />
+
       {selectedOrder && (
         <OrderDetailsModal order={selectedOrder} onClose={() => setSelectedOrder(null)} onUpdateStatus={handleUpdateStatus} />
       )}

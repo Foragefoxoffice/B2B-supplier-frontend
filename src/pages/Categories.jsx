@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, WalletCards } from 'lucide-react';
+import { Plus, Edit2, Trash2, WalletCards, FolderOpen } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import ConfirmModal from '../components/common/ConfirmModal';
 import { getCategoriesApi, createCategoryApi, updateCategoryApi, deleteCategoryApi } from '../commonApi/api';
 import Modal from '../components/ui/Modal';
-
+import { TableSkeleton } from '../components/common/SkeletonLoader';
 const Categories = () => {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -125,9 +125,22 @@ const Categories = () => {
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           {loading ? (
-            <div className="text-center py-20 text-slate-500 font-medium">Loading categories...</div>
+            <TableSkeleton columns={5} rows={8} />
           ) : paginatedCategories.length === 0 ? (
-            <div className="text-center py-20 text-slate-400 font-medium">No categories found. Click Add Category to create one.</div>
+            <div className="flex flex-col items-center justify-center py-20 px-4 text-center animate-fade-in">
+              <div className="bg-slate-50 w-24 h-24 rounded-full flex items-center justify-center mb-5 border border-slate-100 shadow-sm">
+                <FolderOpen className="w-10 h-10 text-slate-400" />
+              </div>
+              <h3 className="text-xl font-semibold text-slate-800 mb-2">No Categories Found</h3>
+              <p className="text-slate-500 max-w-sm mb-8 text-sm">You haven't added any categories yet. Create your first category to organize your products effectively.</p>
+              <button
+                onClick={openAddModal}
+                className="flex items-center px-6 py-3 bg-active-btn text-white rounded-xl hover:opacity-90 transition-all font-medium shadow-md cursor-pointer text-sm hover:-translate-y-0.5"
+              >
+                <Plus className="h-5 w-5 mr-1.5" />
+                Add New Category
+              </button>
+            </div>
           ) : (
             <table className="w-full text-left border-collapse">
               <thead>
@@ -238,7 +251,7 @@ const Categories = () => {
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingCategory ? "Edit Category" : "Add Category"}>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
           <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-2">Category Code *</label>
+            <label className="block text-sm font-semibold text-slate-700 mb-2">Category Code <span className='text-red-500'>*</span></label>
             <input
               {...register('category_code', { required: true })}
               className="w-full border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 transition-all text-slate-800 text-sm bg-slate-50 hover:bg-slate-100/50"
@@ -248,7 +261,7 @@ const Categories = () => {
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-slate-700 mb-2">Category Name *</label>
+            <label className="block text-sm font-semibold text-slate-700 mb-2">Category Name <span className='text-red-500'>*</span></label>
             <input
               {...register('name', { required: true })}
               className="w-full border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 transition-all text-slate-800 text-sm bg-slate-50 hover:bg-slate-100/50"
@@ -268,7 +281,7 @@ const Categories = () => {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-5 py-2.5 bg-active-btn hover:opacity-90 text-white rounded-xl transition-all font-semibold text-sm disabled:opacity-50 cursor-pointer shadow-sm"
+              className="px-5 py-2.5 bg-active-btn hover:opacity-90 text-white rounded-xl transition-all font-medium text-sm disabled:opacity-50 cursor-pointer shadow-sm"
             >
               {isSubmitting ? 'Saving...' : 'Save Changes'}
             </button>
