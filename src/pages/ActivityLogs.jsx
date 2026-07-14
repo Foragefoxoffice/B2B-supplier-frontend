@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Activity, Search, ChevronLeft, ChevronRight } from 'lucide-react';
-import { getActivityLogsApi } from '../commonApi/api';
+import { Activity, Search, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
+import { getActivityLogsApi, deleteActivityLogApi } from '../commonApi/api';
 import { TableSkeleton } from '../components/common/SkeletonLoader';
+import toast from 'react-hot-toast';
 
 const ActivityLogs = () => {
   const [logs, setLogs] = useState([]);
@@ -28,6 +29,21 @@ const ActivityLogs = () => {
       console.error('Error fetching activity logs:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (window.confirm('Are you sure you want to delete this log?')) {
+      try {
+        const response = await deleteActivityLogApi(id);
+        if (response.success) {
+          toast.success('Activity log deleted successfully');
+          fetchLogs();
+        }
+      } catch (error) {
+        console.error('Error deleting log:', error);
+        toast.error('Failed to delete activity log');
+      }
     }
   };
 
@@ -66,6 +82,7 @@ const ActivityLogs = () => {
                   <th className="px-6 py-4 font-semibold">Module</th>
                   <th className="px-6 py-4 font-semibold">Action</th>
                   <th className="px-6 py-4 font-semibold">Details</th>
+                  <th className="px-6 py-4 font-semibold text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -101,11 +118,20 @@ const ActivityLogs = () => {
                       <td className="px-6 py-4 text-sm text-slate-600 truncate max-w-[200px]" title={log.details}>
                         {log.details || '-'}
                       </td>
+                      <td className="px-6 py-4 text-sm text-right">
+                        <button
+                          onClick={() => handleDelete(log.id)}
+                          className="text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded-lg transition-colors"
+                          title="Delete Log"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="5" className="px-6 py-8 text-center text-slate-500">
+                    <td colSpan="6" className="px-6 py-8 text-center text-slate-500">
                       No activity logs found.
                     </td>
                   </tr>

@@ -7,9 +7,11 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ConfirmModal from '../components/common/ConfirmModal';
-import OrderDetailsModal from '../components/orders/OrderDetailsModal';
 import ImageZoomModal from '../components/common/ImageZoomModal';
 import { TableRowsSkeleton } from '../components/common/SkeletonLoader';
+import SelectField from '../components/common/SelectField';
+import OrderDetailsModal from '../components/orders/OrderDetailsModal';
+import DeliveryModal from '../components/orders/DeliveryModal';
 const Orders = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -109,14 +111,14 @@ const Orders = () => {
     setConfirmState({ isOpen: true, orderId: id, status });
   };
 
-  const confirmUpdateStatus = async () => {
+  const confirmUpdateStatus = async (deliveryDetails = null) => {
     if (confirmState.status === 'REJECTED' && !cancelRemarks.trim()) {
       toast.error('Cancellation remarks are required.');
       return;
     }
 
     try {
-      await updateOrderStatusApi(confirmState.orderId, confirmState.status, cancelRemarks);
+      await updateOrderStatusApi(confirmState.orderId, confirmState.status, cancelRemarks, deliveryDetails);
       toast.success(`Order status updated to ${confirmState.status.replace('_', ' ')} successfully!`);
       fetchOrders();
     } catch (error) {
@@ -287,39 +289,33 @@ const Orders = () => {
 
         {/* Order Value (Placeholder) */}
         <div className="w-32 shrink-0">
-          <label className="block text-[14px] font-semibold text-slate-600 mb-1.5">Order Value</label>
-          <div className="relative">
-            <select className="w-full pl-3 pr-8 py-2 text-[13px] border border-slate-200 rounded-lg appearance-none bg-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
-              <option>All Values</option>
-              <option>High to Low</option>
-              <option>Low to High</option>
-            </select>
-            <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-              <ChevronDown size={14} className="text-slate-400" />
-            </div>
-          </div>
+          <SelectField
+            label="Order Value"
+            labelClassName="text-[14px] font-semibold text-slate-600 mb-0"
+            className="rounded-lg py-2 text-[13px]"
+          >
+            <option>All Values</option>
+            <option>High to Low</option>
+            <option>Low to High</option>
+          </SelectField>
         </div>
 
         {/* Status */}
         <div className="w-40 shrink-0">
-          <label className="block text-[14px] font-semibold text-slate-600 mb-1.5">Status</label>
-          <div className="relative">
-            <select
-              className="w-full pl-3 pr-8 py-2 text-[13px] border border-slate-200 rounded-lg appearance-none bg-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-            >
-              <option value="All Status">All Status</option>
-              <option value="Pending">Pending Approval</option>
-              <option value="Approved">Approved</option>
-              <option value="Dispatched">Dispatched</option>
-              <option value="Delivered">Delivered</option>
-              <option value="Cancelled">Cancelled</option>
-            </select>
-            <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-              <ChevronDown size={14} className="text-slate-400" />
-            </div>
-          </div>
+          <SelectField
+            label="Status"
+            labelClassName="text-[14px] font-semibold text-slate-600 mb-0"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="rounded-lg py-2 text-[13px]"
+          >
+            <option value="All Status">All Status</option>
+            <option value="Pending">Pending Approval</option>
+            <option value="Approved">Approved</option>
+            <option value="Dispatched">Dispatched</option>
+            <option value="Delivered">Delivered</option>
+            <option value="Cancelled">Cancelled</option>
+          </SelectField>
         </div>
 
         {/* Action Buttons */}
@@ -485,25 +481,20 @@ const Orders = () => {
 
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
-              <div className="relative">
-                <select
-                  className="pl-3 pr-8 py-1.5 text-sm border border-slate-200 rounded-lg appearance-none bg-white focus:outline-none focus:border-blue-500"
-                  value={limit}
-                  onChange={(e) => {
-                    setLimit(Number(e.target.value));
-                    setPage(1);
-                  }}
-                >
-                  <option value="10">10 / page</option>
-                  <option value="20">20 / page</option>
-                  <option value="50">50 / page</option>
-                </select>
-                <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                  <ChevronDown size={14} className="text-slate-400" />
-                </div>
-              </div>
+              <SelectField
+                className="py-1.5 text-sm rounded-lg"
+                wrapperClassName="w-auto"
+                value={limit}
+                onChange={(e) => {
+                  setLimit(Number(e.target.value));
+                  setPage(1);
+                }}
+              >
+                <option value="10">10 / page</option>
+                <option value="20">20 / page</option>
+                <option value="50">50 / page</option>
+              </SelectField>
             </div>
-
             <div className="flex items-center gap-1">
               <button
                 className="p-1.5 rounded-md border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed bg-white"
@@ -537,10 +528,10 @@ const Orders = () => {
       </div>
 
       <ConfirmModal
-        isOpen={confirmState.isOpen}
+        isOpen={confirmState.isOpen && confirmState.status !== 'COMPLETED'}
         title="Update Order Status"
         message={`Are you sure you want to mark this order as ${confirmState.status?.replace('_', ' ')}?`}
-        onConfirm={confirmUpdateStatus}
+        onConfirm={() => confirmUpdateStatus()}
         onCancel={() => setConfirmState({ isOpen: false, orderId: null, status: null })}
         confirmText="Confirm"
         confirmVariant="primary"
@@ -560,6 +551,12 @@ const Orders = () => {
           </div>
         )}
       </ConfirmModal>
+
+      <DeliveryModal
+        isOpen={confirmState.isOpen && confirmState.status === 'COMPLETED'}
+        onClose={() => setConfirmState({ isOpen: false, orderId: null, status: null })}
+        onConfirm={(details) => confirmUpdateStatus(details)}
+      />
 
       <ConfirmModal
         isOpen={deleteConfirmState.isOpen}

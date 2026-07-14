@@ -3,7 +3,31 @@ import { FileText, Package, X, Check, XCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ImageZoomModal from '../common/ImageZoomModal';
 
-const getOrderedImageUrl = (item, orderRemarks) => {
+const getTimeAgo = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInSeconds = Math.floor((now - date) / 1000);
+
+    const intervals = {
+        year: 31536000,
+        month: 2592000,
+        week: 604800,
+        day: 86400,
+        hour: 3600,
+        minute: 60,
+    };
+
+    for (const [unit, seconds] of Object.entries(intervals)) {
+        const interval = Math.floor(diffInSeconds / seconds);
+        if (interval >= 1) {
+            return `Age: ${interval} ${unit}${interval === 1 ? '' : 's'} ago`;
+        }
+    }
+    return 'Age: Just now';
+};
+
+const getOrderedImageObj = (item, orderRemarks) => {
     if (!item?.product?.images || item.product.images.length === 0) return null;
 
     const targetRemarks = item.remarks || orderRemarks;
@@ -11,17 +35,17 @@ const getOrderedImageUrl = (item, orderRemarks) => {
     if (targetRemarks && targetRemarks.includes('Color:')) {
         const colorPart = targetRemarks.split('Color:')[1].split('\n')[0].trim().split('|')[0].trim();
         const matchedImage = item.product.images.find(img => img.color && img.color.toLowerCase() === colorPart.toLowerCase());
-        if (matchedImage) return `http://localhost:5000${matchedImage.url}`;
+        if (matchedImage) return matchedImage;
     }
 
     if (targetRemarks) {
         const sortedImages = [...item.product.images].sort((a, b) => (b.color || '').length - (a.color || '').length);
         const matchedImage = sortedImages.find(img => img.color && targetRemarks.includes(img.color));
-        if (matchedImage) return `http://localhost:5000${matchedImage.url}`;
+        if (matchedImage) return matchedImage;
     }
 
     const frontImage = item.product.images.find(img => img.is_primary);
-    return `http://localhost:5000${(frontImage || item.product.images[0]).url}`;
+    return frontImage || item.product.images[0];
 };
 
 const getStatusInfo = (status) => {
@@ -102,37 +126,105 @@ const OrderDetailsModal = ({ order, onClose, onUpdateStatus }) => {
                             )}
                         </div>
 
+                        {order.status === 'COMPLETED' && (order.tracking_number || order.booking_copy_url || order.invoice_copy_url) && (
+                            <div className="mb-8">
+                                <h3 className="text-[17px] font-semibold text-slate-800 mb-4 flex items-center gap-2">
+                                    <Package className="w-[18px] h-[18px] text-teal-600" /> Delivery Details
+                                </h3>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-5 bg-[#f6fcf9] p-5 rounded-2xl border border-teal-100/60">
+                                    {order.tracking_number && (
+                                        <div className="flex flex-col gap-1.5">
+                                            <p className="text-[13px] font-semibold text-teal-800 tracking-wide">Tracking Number</p>
+                                            <div className="bg-white px-4 py-2.5 rounded-xl border border-teal-50 shadow-[0_2px_10px_-4px_rgba(20,116,105,0.1)] font-semibold text-slate-800 text-[14px]">
+                                                {order.tracking_number}
+                                            </div>
+                                        </div>
+                                    )}
+                                    {order.booking_copy_url && (
+                                        <div className="flex flex-col gap-1.5">
+                                            <p className="text-[13px] font-semibold text-teal-800 tracking-wide">Booking Copy (LR)</p>
+                                            <a href={`http://localhost:5000${order.booking_copy_url}`} target="_blank" rel="noreferrer" className="bg-white px-4 py-2.5 rounded-xl border border-teal-50 shadow-[0_2px_10px_-4px_rgba(20,116,105,0.1)] hover:bg-teal-50/50 hover:border-teal-100 transition-all font-medium text-teal-700 text-[14px] inline-flex items-center gap-2.5 w-fit">
+                                                <FileText className="w-4 h-4 text-teal-600" /> View File
+                                            </a>
+                                        </div>
+                                    )}
+                                    {order.invoice_copy_url && (
+                                        <div className="flex flex-col gap-1.5">
+                                            <p className="text-[13px] font-semibold text-teal-800 tracking-wide">Invoice Copy</p>
+                                            <a href={`http://localhost:5000${order.invoice_copy_url}`} target="_blank" rel="noreferrer" className="bg-white px-4 py-2.5 rounded-xl border border-teal-50 shadow-[0_2px_10px_-4px_rgba(20,116,105,0.1)] hover:bg-teal-50/50 hover:border-teal-100 transition-all font-medium text-teal-700 text-[14px] inline-flex items-center gap-2.5 w-fit">
+                                                <FileText className="w-4 h-4 text-teal-600" /> View File
+                                            </a>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
                         <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
                             <Package className="w-5 h-5 text-blue-500" /> Ordered Items
                         </h3>
 
-                        <div className="space-y-3 mb-6">
-                            {order.items?.map((item, idx) => (
-                                <div key={idx} className="flex flex-col p-4 bg-white border border-slate-100 rounded-2xl hover:border-blue-100 hover:shadow-[0_4px_20px_-4px_rgba(6,81,237,0.1)] transition-all group">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-4">
-                                            <div className="w-16 h-16 rounded-xl bg-slate-50 border border-slate-100 overflow-hidden shrink-0 group-hover:border-blue-200 transition-colors">
-                                                <ImageZoomModal src={getOrderedImageUrl(item, order.remarks) || `https://ui-avatars.com/api/?name=${item.product?.name || 'O'}&background=random&color=fff&rounded=false&size=128`} alt={item.product?.name} className="w-full h-full object-cover" />
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
+                            {order.items?.map((item, idx) => {
+                                const matchedImage = getOrderedImageObj(item, order.remarks);
+                                const imageUrl = matchedImage ? `http://localhost:5000${matchedImage.url}` : `https://ui-avatars.com/api/?name=${item.product?.name || 'O'}&background=random&color=fff&rounded=false&size=128`;
+
+                                let color = null;
+                                const targetRemarks = item.remarks || order.remarks;
+                                if (targetRemarks && targetRemarks.includes('Color:')) {
+                                    color = targetRemarks.split('Color:')[1].split('\n')[0].trim().split('|')[0].trim();
+                                }
+                                if (!color && matchedImage?.color) {
+                                    color = matchedImage.color;
+                                }
+
+                                let ageDisplay = '';
+                                const creationDate = matchedImage?.created_at || item.product?.created_at;
+                                if (creationDate) {
+                                    ageDisplay = getTimeAgo(creationDate);
+                                }
+
+                                return (
+                                    <div key={idx} className="flex flex-col bg-white border border-slate-100 rounded-2xl overflow-hidden hover:border-blue-100 hover:shadow-lg transition-all group relative">
+                                        <div className="relative h-48 sm:h-56 w-full bg-slate-50 overflow-hidden shrink-0">
+                                            <ImageZoomModal src={imageUrl} alt={item.product?.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                                            {color && (
+                                                <div className="absolute bottom-2 left-2 px-2.5 py-0.5  bg-amber-50 border border-amber-100 rounded text-[12px] font-medium text-amber-800 tracking-wider z-10">
+                                                    {color}
+                                                </div>
+                                            )}
+                                            {ageDisplay && (
+                                                <span className="absolute top-2 right-2 text-[10px] font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
+                                                    {ageDisplay}
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        <div className="p-3 flex flex-col flex-1">
+                                            <h4 className="font-semibold text-slate-800 text-[14px] group-hover:text-blue-600 transition-colors line-clamp-2 leading-tight mb-2">
+                                                {item.product?.name || 'Product'}
+                                            </h4>
+
+                                            <div className="flex items-center justify-between mb-2">
+                                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600 uppercase tracking-wider">
+                                                    {item.product?.product_code || 'N/A'}
+                                                </span>
                                             </div>
-                                            <div>
-                                                <h4 className="font-semibold text-slate-800 text-[16px] group-hover:text-blue-600 transition-colors">{item.product?.name || 'Product'}</h4>
-                                                <div className="flex items-center gap-2 mt-1">
-                                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-500 uppercase tracking-wider">{item.product?.product_code || 'N/A'}</span>
+
+                                            <div className="mt-auto pt-2 border-t border-slate-50 flex items-end justify-between">
+                                                <div className="flex flex-col">
+                                                    <p className="text-[11px] font-medium text-slate-500 mb-0.5">
+                                                        {item.quantity} {item.product?.unit || 'pcs'} × ₹{parseFloat(item.rate).toLocaleString('en-IN')}
+                                                    </p>
+                                                    <p className="font-bold text-slate-800 text-[15px]">
+                                                        ₹{parseFloat(item.amount).toLocaleString('en-IN')}
+                                                    </p>
                                                 </div>
                                             </div>
                                         </div>
-                                        <div className="flex flex-col items-end justify-center">
-                                            <p className="font-bold text-slate-800 text-lg">₹ {parseFloat(item.amount).toLocaleString('en-IN')}</p>
-                                            <p className="text-xs font-medium text-slate-500 mt-1">{item.quantity} {item.product?.unit || 'Units'} × ₹ {parseFloat(item.rate).toLocaleString('en-IN')}</p>
-                                        </div>
                                     </div>
-                                    {item.remarks && (
-                                        <div className="mt-4 px-3 py-1 bg-amber-50/50 border border-amber-100 rounded-lg">
-                                            <p className="text-amber-800 text-sm font-medium">{item.remarks}</p>
-                                        </div>
-                                    )}
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     </div>
 

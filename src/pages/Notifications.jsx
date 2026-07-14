@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Bell, Check, Trash2, Calendar, Package, AlertCircle, ShoppingCart, MessageSquare, Truck } from 'lucide-react';
+import { Bell, Check, Trash2, Calendar, Package, AlertCircle, ShoppingCart, MessageSquare, Truck, BellCheck } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useNotifications } from '../hooks/useNotifications';
 
@@ -26,11 +26,11 @@ const Notifications = () => {
   const userString = localStorage.getItem('user');
   const token = localStorage.getItem('token');
   const user = userString ? JSON.parse(userString) : null;
-  
+
   const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification } = useNotifications(user, token);
   const [activeTab, setActiveTab] = useState('all'); // 'all' or 'unread'
 
-  const filteredNotifications = activeTab === 'all' 
+  const filteredNotifications = activeTab === 'all'
     ? (notifications || [])
     : (notifications || []).filter(n => !n.is_read);
 
@@ -39,14 +39,14 @@ const Notifications = () => {
       {/* Header Section */}
       <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Notifications</h1>
+          <h1 className="text-2xl font-semibold text-slate-800 flex items-center gap-2 tracking-tight"><BellCheck className="h-6 w-6 text-[#2563EB]" />Notifications</h1>
           <p className="text-sm text-slate-500 mt-1">
             Stay updated with your latest alerts and activities.
           </p>
         </div>
-        
+
         {unreadCount > 0 && (
-          <button 
+          <button
             onClick={markAllAsRead}
             className="flex items-center text-sm font-medium text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-lg transition-colors cursor-pointer"
           >
@@ -58,14 +58,13 @@ const Notifications = () => {
 
       {/* Main Content Area */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-        
+
         {/* Tabs */}
         <div className="flex border-b border-slate-200 px-6">
           <button
             onClick={() => setActiveTab('all')}
-            className={`py-4 px-2 mr-6 text-sm font-semibold relative transition-colors cursor-pointer ${
-              activeTab === 'all' ? 'text-blue-600' : 'text-slate-500 hover:text-slate-800'
-            }`}
+            className={`py-4 px-2 mr-6 text-sm font-semibold relative transition-colors cursor-pointer ${activeTab === 'all' ? 'text-blue-600' : 'text-slate-500 hover:text-slate-800'
+              }`}
           >
             All
             <span className="ml-2 bg-slate-100 text-slate-600 py-0.5 px-2 rounded-full text-xs">
@@ -75,12 +74,11 @@ const Notifications = () => {
               <motion.div layoutId="activeTabIndicator" className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600" />
             )}
           </button>
-          
+
           <button
             onClick={() => setActiveTab('unread')}
-            className={`py-4 px-2 text-sm font-semibold relative transition-colors cursor-pointer ${
-              activeTab === 'unread' ? 'text-blue-600' : 'text-slate-500 hover:text-slate-800'
-            }`}
+            className={`py-4 px-2 text-sm font-semibold relative transition-colors cursor-pointer ${activeTab === 'unread' ? 'text-blue-600' : 'text-slate-500 hover:text-slate-800'
+              }`}
           >
             Unread
             {unreadCount > 0 && (
@@ -100,17 +98,17 @@ const Notifications = () => {
             filteredNotifications.map((notification) => {
               const { icon: Icon, color } = getNotificationIcon(notification.type);
               return (
-                <div 
-                  key={notification.id} 
+                <div
+                  key={notification.id}
                   className={`p-6 flex items-start gap-4 transition-colors hover:bg-slate-50 ${!notification.is_read ? 'bg-blue-50/30' : ''}`}
                 >
                   <div className={`h-10 w-10 shrink-0 rounded-full flex items-center justify-center ${color}`}>
                     <Icon className="h-5 w-5" />
                   </div>
-                  
+
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-1 gap-2">
-                      <h4 className={`text-sm font-bold truncate ${!notification.is_read ? 'text-slate-900' : 'text-slate-700'}`}>
+                      <h4 className={`text-sm font-semibold truncate ${!notification.is_read ? 'text-slate-900' : 'text-slate-700'}`}>
                         {notification.title}
                       </h4>
                       <div className="flex items-center text-xs text-slate-400 whitespace-nowrap shrink-0">
@@ -125,7 +123,7 @@ const Notifications = () => {
 
                   <div className="flex items-center gap-2 ml-4 opacity-100 transition-opacity">
                     {!notification.is_read && (
-                      <button 
+                      <button
                         onClick={() => markAsRead(notification.id)}
                         className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors tooltip cursor-pointer"
                         title="Mark as read"
@@ -133,7 +131,7 @@ const Notifications = () => {
                         <Check className="h-4 w-4" />
                       </button>
                     )}
-                    <button 
+                    <button
                       onClick={() => deleteNotification(notification.id)}
                       className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors tooltip cursor-pointer"
                       title="Delete"
@@ -141,7 +139,7 @@ const Notifications = () => {
                       <Trash2 className="h-4 w-4" />
                     </button>
                   </div>
-                  
+
                   {/* Unread dot indicator */}
                   {!notification.is_read && (
                     <div className="h-2 w-2 rounded-full bg-blue-600 mt-2 shrink-0"></div>
@@ -156,7 +154,7 @@ const Notifications = () => {
               </div>
               <h3 className="text-lg font-bold text-slate-800 mb-1">No notifications yet</h3>
               <p className="text-slate-500 max-w-sm mx-auto">
-                {activeTab === 'unread' 
+                {activeTab === 'unread'
                   ? "You've read all your notifications. You're all caught up!"
                   : "When you get notifications, they'll show up here."}
               </p>

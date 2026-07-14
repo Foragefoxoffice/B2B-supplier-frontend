@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { getOrdersApi } from '../commonApi/api';
+import { getOrdersApi, updateOrderStatusApi } from '../commonApi/api';
 import { Search, Calendar, RefreshCcw, FileText, CheckCircle, Package, Truck, XCircle, Clock, ChevronRight, X, LocateFixedIcon, PackageOpen } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import OrderDetailsModal from '../components/orders/OrderDetailsModal';
 import ImageZoomModal from '../components/common/ImageZoomModal';
 import { TableRowsSkeleton } from '../components/common/SkeletonLoader';
-
+import SelectField from '../components/common/SelectField';
+import ConfirmModal from '../components/common/ConfirmModal';
 
 const getFrontImageUrl = (item) => {
     if (!item?.product?.images || item.product.images.length === 0) return null;
@@ -29,6 +30,8 @@ const OrderTracking = () => {
     const [totalOrders, setTotalOrders] = useState(0);
     const [stats, setStats] = useState({ total: 0, inProgress: 0, shipped: 0, delivered: 0, cancelled: 0 });
     const [selectedOrder, setSelectedOrder] = useState(null);
+    const [confirmState, setConfirmState] = useState({ isOpen: false, orderId: null, status: null });
+    const [cancelRemarks, setCancelRemarks] = useState('');
 
     useEffect(() => {
         fetchOrders();
@@ -94,6 +97,33 @@ const OrderTracking = () => {
         setAppliedStartDate('');
         setAppliedEndDate('');
         setPage(1);
+    };
+
+    const handleUpdateStatus = (id, status) => {
+        setCancelRemarks('');
+        setConfirmState({ isOpen: true, orderId: id, status });
+    };
+
+    const confirmUpdateStatus = async () => {
+        if (confirmState.status === 'REJECTED' && !cancelRemarks.trim()) {
+            toast.error('Cancellation remarks are required.');
+            return;
+        }
+
+        try {
+            await updateOrderStatusApi(confirmState.orderId, confirmState.status, cancelRemarks);
+            toast.success(`Order status updated to ${confirmState.status.replace('_', ' ')} successfully!`);
+            fetchOrders();
+            if (selectedOrder) {
+                // If a modal is open, we can close it or let it re-fetch (useEffect will update it)
+                setSelectedOrder(null);
+            }
+        } catch (error) {
+            console.error('Error updating order:', error);
+            toast.error('Failed to update order status.');
+        } finally {
+            setConfirmState({ isOpen: false, orderId: null, status: null });
+        }
     };
 
     const getStatusInfo = (status) => {
@@ -276,8 +306,8 @@ const OrderTracking = () => {
                 </div>
 
                 <div className="w-48 relative group">
-                    <select
-                        className="w-full px-4 py-2.5 bg-slate-50/50 hover:bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 transition-all focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 focus:bg-white appearance-none cursor-pointer"
+                    <SelectField
+                        className="w-full py-2.5 bg-slate-50/50 hover:bg-slate-50 rounded-xl text-sm transition-all focus:ring-4 focus:ring-blue-500/10 focus:bg-white cursor-pointer"
                         value={statusFilter}
                         onChange={(e) => {
                             setStatusFilter(e.target.value);
@@ -290,8 +320,7 @@ const OrderTracking = () => {
                         <option>Dispatched</option>
                         <option>Delivered</option>
                         <option>Cancelled</option>
-                    </select>
-                    <ChevronRight className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none rotate-90" />
+                    </SelectField>
                 </div>
 
                 <div className="relative flex items-center border border-slate-200 rounded-xl bg-slate-50/50 hover:bg-slate-50 focus-within:border-blue-500 focus-within:ring-4 focus-within:ring-blue-500/10 focus-within:bg-white transition-all overflow-hidden h-[42px] px-3 gap-2">
@@ -500,8 +529,9 @@ const OrderTracking = () => {
                     <div className="flex items-center gap-3">
                         <div className="flex items-center gap-2 text-sm text-slate-500 font-medium">
                             Rows per page:
-                            <select
-                                className="px-2 py-1.5 border border-slate-200 rounded-lg text-sm text-slate-700 bg-white focus:outline-none focus:border-blue-500 hover:border-slate-300 transition-colors cursor-pointer"
+                            <SelectField
+                                className="px-2 py-1.5 rounded-lg text-sm cursor-pointer hover:border-slate-300 transition-colors"
+                                wrapperClassName="w-auto"
                                 value={limit}
                                 onChange={(e) => {
                                     setLimit(Number(e.target.value));
@@ -511,7 +541,7 @@ const OrderTracking = () => {
                                 <option value={10}>10</option>
                                 <option value={20}>20</option>
                                 <option value={50}>50</option>
-                            </select>
+                            </SelectField>
                         </div>
                         <div className="w-px h-6 bg-slate-200 mx-1"></div>
                         <div className="flex items-center gap-1">
@@ -558,7 +588,32 @@ const OrderTracking = () => {
                 </div>
             </motion.div>
 
-            {selectedOrder && <OrderDetailsModal order={selectedOrder} onClose={() => setSelectedOrder(null)} />}
+            <ConfirmModal
+                isOpen={confirmState.isOpen}
+                title="Update Order Status"
+                message={`Are you sure you want to mark this order as ${confirmState.status?.replace('_', ' ')}?`}
+                onConfirm={confirmUpdateStatus}
+                onCancel={() => setConfirmState({ isOpen: false, orderId: null, status: null })}
+                confirmText="Confirm"
+                confirmVariant="primary"
+                disableConfirm={confirmState.status === 'REJECTED' && !cancelRemarks.trim()}
+            >
+                {confirmState.status === 'REJECTED' && (
+                    <div className="w-full">
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Cancellation Remarks <span className="text-red-600">*</span></label>
+                        <textarea
+                            className="w-full border border-slate-200 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none resize-none"
+                            rows={3}
+                            required
+                            placeholder="Why are you canceling this order?"
+                            value={cancelRemarks}
+                            onChange={(e) => setCancelRemarks(e.target.value)}
+                        />
+                    </div>
+                )}
+            </ConfirmModal>
+
+            {selectedOrder && <OrderDetailsModal order={selectedOrder} onClose={() => setSelectedOrder(null)} onUpdateStatus={handleUpdateStatus} />}
         </motion.div>
     );
 };

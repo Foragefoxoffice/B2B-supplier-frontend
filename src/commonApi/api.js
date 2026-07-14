@@ -149,6 +149,12 @@ export const deleteProductApi = async (id) => {
   return response.data;
 };
 
+export const deleteProductImageApi = async (imageId) => {
+  const response = await api.delete(`/products/image/${imageId}`);
+  return response.data;
+};
+
+
 // ==========================
 // DASHBOARD
 // ==========================
@@ -170,8 +176,26 @@ export const createOrderApi = async (data) => {
   return response.data;
 };
 
-export const updateOrderStatusApi = async (id, status, remarks = '') => {
-  const response = await api.patch(`/orders/${id}/status`, { status, remarks });
+export const updateOrderStatusApi = async (id, status, remarks = '', deliveryDetails = null) => {
+  let payload;
+  let headers = {};
+
+  if (deliveryDetails && (deliveryDetails.bookingCopy || deliveryDetails.invoiceCopy)) {
+    payload = new FormData();
+    payload.append('status', status);
+    payload.append('remarks', remarks);
+    if (deliveryDetails.trackingNumber) payload.append('trackingNumber', deliveryDetails.trackingNumber);
+    if (deliveryDetails.bookingCopy) payload.append('bookingCopy', deliveryDetails.bookingCopy);
+    if (deliveryDetails.invoiceCopy) payload.append('invoiceCopy', deliveryDetails.invoiceCopy);
+    headers['Content-Type'] = 'multipart/form-data';
+  } else {
+    payload = { status, remarks };
+    if (deliveryDetails && deliveryDetails.trackingNumber) {
+      payload.trackingNumber = deliveryDetails.trackingNumber;
+    }
+  }
+
+  const response = await api.patch(`/orders/${id}/status`, payload, { headers });
   return response.data;
 };
 
@@ -219,6 +243,11 @@ export const deleteTransporterApi = async (id) => {
 // --- Activity Logs ---
 export const getActivityLogsApi = async (params) => {
   const response = await api.get('/activity-logs', { params });
+  return response.data;
+};
+
+export const deleteActivityLogApi = async (id) => {
+  const response = await api.delete(`/activity-logs/${id}`);
   return response.data;
 };
 

@@ -89,7 +89,7 @@ const Transporters = () => {
         </div>
         <button
           onClick={() => handleOpenModal()}
-          className="bg-blue-600 text-white px-4 py-2 rounded-xl flex items-center gap-2 text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm"
+          className="bg-active-btn text-white px-4 py-2 rounded-xl flex items-center gap-2 text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm"
         >
           <Plus className="w-4 h-4" /> Add Transporter
         </button>

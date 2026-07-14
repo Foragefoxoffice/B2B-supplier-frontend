@@ -6,6 +6,7 @@ import Login from './pages/Login';
 import DashboardLayout from './components/layouts/DashboardLayout';
 import Suppliers from './pages/Suppliers';
 import Products from './pages/Products';
+import AdminSupplierProducts from './pages/AdminSupplierProducts';
 import Categories from './pages/Categories';
 import Dashboard from './pages/Dashboard';
 import Orders from './pages/Orders';
@@ -36,6 +37,7 @@ function App() {
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/suppliers" element={<Suppliers />} />
               <Route path="/products" element={<Products />} />
+              <Route path="/supplier-products" element={<AdminSupplierProducts />} />
               <Route path="/categories" element={<Categories />} />
               <Route path="/orders" element={<Orders />} />
               <Route path="/settings" element={<Settings />} />

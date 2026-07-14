@@ -6,6 +6,8 @@ import ConfirmModal from '../components/common/ConfirmModal';
 import { getCategoriesApi, createCategoryApi, updateCategoryApi, deleteCategoryApi } from '../commonApi/api';
 import Modal from '../components/ui/Modal';
 import { TableSkeleton } from '../components/common/SkeletonLoader';
+import SelectField from '../components/common/SelectField';
+
 const Categories = () => {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -195,19 +197,20 @@ const Categories = () => {
               <span className="text-slate-300">|</span>
               <div className="flex items-center gap-2">
                 <span className="text-slate-400 font-semibold text-xs uppercase tracking-wider">Show:</span>
-                <select
+                <SelectField
                   value={itemsPerPage}
                   onChange={(e) => {
                     setItemsPerPage(parseInt(e.target.value));
                     setCurrentPage(1);
                   }}
-                  className="border border-slate-200 rounded-lg px-2 py-0.5 text-xs bg-white outline-none cursor-pointer font-bold text-slate-700"
+                  className="rounded-lg px-2 py-0.5 text-xs cursor-pointer font-bold text-slate-700"
+                  wrapperClassName="w-auto"
                 >
                   <option value={5}>5</option>
                   <option value={10}>10</option>
                   <option value={25}>25</option>
                   <option value={50}>50</option>
-                </select>
+                </SelectField>
               </div>
             </div>
 

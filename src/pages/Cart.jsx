@@ -13,6 +13,7 @@ import ImageZoomModal from '../components/common/ImageZoomModal';
 
 import { getTransportersApi } from '../commonApi/api';
 import TruckButton from '../components/ui/TruckButton';
+import SelectField from '../components/common/SelectField';
 
 const Cart = () => {
     const { cartItems, updateQuantity, removeFromCart, clearCart, cartStats } = useCart();
@@ -408,18 +409,16 @@ const Cart = () => {
                                         <Truck className="w-4 h-4 text-slate-500" />
                                         Select Transporter
                                     </h3>
-                                    <div className="flex flex-col gap-1.5">
-                                        <select
-                                            value={selectedTransporters[selectedSupplierId] || ''}
-                                            onChange={(e) => setSelectedTransporters({ ...selectedTransporters, [selectedSupplierId]: e.target.value })}
-                                            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500"
-                                        >
-                                            <option value="">-- Let Supplier Decide --</option>
-                                            {supplierTransporters[selectedSupplierId].map(t => (
-                                                <option key={t.id} value={t.id}>{t.name}</option>
-                                            ))}
-                                        </select>
-                                    </div>
+                                    <SelectField
+                                        value={selectedTransporters[selectedSupplierId] || ''}
+                                        onChange={(e) => setSelectedTransporters({ ...selectedTransporters, [selectedSupplierId]: e.target.value })}
+                                        className="w-full px-3 py-2 rounded-lg text-sm"
+                                    >
+                                        <option value="">-- Let Supplier Decide --</option>
+                                        {supplierTransporters[selectedSupplierId].map(t => (
+                                            <option key={t.id} value={t.id}>{t.name}</option>
+                                        ))}
+                                    </SelectField>
                                 </div>
                             )}
 

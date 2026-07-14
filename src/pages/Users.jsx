@@ -6,6 +6,7 @@ import { getUsersApi, createUserApi, updateUserApi, deleteUserApi, getRolesApi }
 import Modal from '../components/ui/Modal';
 import ConfirmModal from '../components/common/ConfirmModal';
 import { TableSkeleton } from '../components/common/SkeletonLoader';
+import SelectField from '../components/common/SelectField';
 
 const Users = () => {
   const [users, setUsers] = useState([]);
@@ -265,32 +266,28 @@ const Users = () => {
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Role *</label>
-              <select
-                {...register('role_id', { required: 'Role is required' })}
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-white"
-              >
-                <option value="">Select Role</option>
-                {roles.map(role => (
-                  <option key={role.id} value={role.id}>{role.name}</option>
-                ))}
-              </select>
-              {errors.role_id && <p className="mt-1 text-xs text-red-500">{errors.role_id.message}</p>}
-            </div>
+            <SelectField
+              label="Role *"
+              {...register('role_id', { required: 'Role is required' })}
+              className="px-4 py-2.5 rounded-xl text-sm"
+              error={errors.role_id?.message}
+            >
+              <option value="">Select Role</option>
+              {roles.map(role => (
+                <option key={role.id} value={role.id}>{role.name}</option>
+              ))}
+            </SelectField>
 
             {editingUser && (
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Status</label>
-                <select
-                  {...register('status')}
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-white"
-                >
-                  <option value="ACTIVE">Active</option>
-                  <option value="INACTIVE">Inactive</option>
-                  <option value="SUSPENDED">Suspended</option>
-                </select>
-              </div>
+              <SelectField
+                label="Status"
+                {...register('status')}
+                className="px-4 py-2.5 rounded-xl text-sm"
+              >
+                <option value="ACTIVE">Active</option>
+                <option value="INACTIVE">Inactive</option>
+                <option value="SUSPENDED">Suspended</option>
+              </SelectField>
             )}
           </div>
 

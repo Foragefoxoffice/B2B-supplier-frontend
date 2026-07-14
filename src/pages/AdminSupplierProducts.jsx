@@ -8,7 +8,7 @@ import {
 import ConfirmModal from '../components/common/ConfirmModal';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
-import { getProductsApi, createProductApi, updateProductApi, approveProductApi, deleteProductApi, getSuppliersApi, getCategoriesApi, createOrderApi } from '../commonApi/api';
+import { getProductsApi, createProductApi, updateProductApi, approveProductApi, deleteProductApi, deleteProductImageApi, getSuppliersApi, getCategoriesApi, createOrderApi } from '../commonApi/api';
 import Modal from '../components/ui/Modal';
 import ProductGallery from './ProductGallery';
 import ImageZoomModal from '../components/common/ImageZoomModal';
@@ -67,7 +67,31 @@ const getColorDotStyle = (colorName) => {
   return { backgroundColor: '#CBD5E1' };
 };
 
-const Products = () => {
+const getTimeAgo = (dateString) => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffInSeconds = Math.floor((now - date) / 1000);
+
+  const intervals = {
+    year: 31536000,
+    month: 2592000,
+    week: 604800,
+    day: 86400,
+    hour: 3600,
+    minute: 60,
+  };
+
+  for (const [unit, seconds] of Object.entries(intervals)) {
+    const interval = Math.floor(diffInSeconds / seconds);
+    if (interval >= 1) {
+      return `Age: ${interval} ${unit}${interval === 1 ? '' : 's'} ago`;
+    }
+  }
+  return 'Age: Just now';
+};
+
+const AdminSupplierProducts = () => {
   const [allProducts, setAllProducts] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -75,6 +99,8 @@ const Products = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [deleteProductId, setDeleteProductId] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteImageId, setDeleteImageId] = useState(null);
+  const [showDeleteImageConfirm, setShowDeleteImageConfirm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [userRole, setUserRole] = useState(null);
   const [userSupplierId, setUserSupplierId] = useState(null);
@@ -644,6 +670,30 @@ const Products = () => {
     }
   };
 
+  const handleDeleteImage = (imageId) => {
+    setDeleteImageId(imageId);
+    setShowDeleteImageConfirm(true);
+  };
+
+  const confirmDeleteImage = async () => {
+    if (!deleteImageId) return;
+    try {
+      await deleteProductImageApi(deleteImageId);
+      toast.success('Color variant deleted successfully!');
+      fetchProducts();
+      if (viewingProductImagesProduct) {
+        setIsViewImagesModalOpen(false);
+        setViewingProductImagesProduct(null);
+      }
+    } catch (error) {
+      console.error('Error deleting color variant:', error);
+      toast.error('Failed to delete color variant.');
+    } finally {
+      setShowDeleteImageConfirm(false);
+      setDeleteImageId(null);
+    }
+  };
+
   const handleApprove = async (id, status) => {
     try {
       await approveProductApi(id, status);
@@ -657,13 +707,13 @@ const Products = () => {
 
   return (
     <div className="space-y-6">
-      {userRole === 'SUPPLIER' ? (
+      {true ? (
         <>
           {/* Header section */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
               <h2 className="text-2xl flex items-center gap-2 font-semibold text-slate-800">
-                <BookAIcon className='text-[#2563EB]' /> My Products
+                <BookAIcon className="text-[#2563EB]" /> Supplier Products
               </h2>
               <p className="text-sm text-slate-500 mt-1">
                 Manage your product catalog and inventory
@@ -676,29 +726,6 @@ const Products = () => {
               >
                 <Download className="h-4 w-4 mr-2 text-slate-500" />
                 Export
-              </button>
-              <button
-                onClick={() => {
-                  reset({
-                    name: '',
-                    product_code: '',
-                    description: '',
-                    price: '',
-                    moq: 1,
-                    unit: 'pcs',
-                    category_id: '',
-                    supplier_id: userSupplierId || '',
-                    gst: '',
-                    material: ''
-                  });
-                  setEditingProduct(null);
-                  setProductImages([]);
-                  setIsModalOpen(true);
-                }}
-                className="flex items-center px-4 py-1.5 bg-active-btn text-white rounded-xl hover:opacity-90 transition-colors font-medium shadow-sm cursor-pointer"
-              >
-                <Plus className="h-4 w-4 mr-1.5" />
-                Add Product
               </button>
             </div>
           </div>
@@ -797,8 +824,7 @@ const Products = () => {
 
           {/* Filters Bar */}
           <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-100 shadow-xs">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 flex-1">
-              {/* Search */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 flex-1">
               <div className="flex flex-col gap-1.5 lg:col-span-1">
                 <span className="text-sm font-semibold text-slate-600">Search</span>
                 <div className="relative">
@@ -813,6 +839,21 @@ const Products = () => {
                 </div>
               </div>
 
+
+              <SelectField
+                label="Supplier"
+                labelClassName="font-semibold text-slate-600"
+                value={selectedSupplierId}
+                onChange={(e) => setSelectedSupplierId(e.target.value)}
+                className="rounded-xl px-3 py-2 text-sm cursor-pointer font-medium text-slate-700"
+              >
+                <option value="">All Suppliers</option>
+                {suppliers.map(s => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </SelectField>
+
+              {/* Category Dropdown */}
               <SelectField
                 label="Category"
                 labelClassName="font-semibold text-slate-600"
@@ -821,11 +862,12 @@ const Products = () => {
                 className="rounded-xl px-3 py-2 text-sm cursor-pointer font-medium text-slate-700"
               >
                 <option value="">All Categories</option>
-                {categories.map(c => (
+                {getSupplierCategories().map(c => (
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
               </SelectField>
 
+              {/* Status Dropdown */}
               <SelectField
                 label="Status"
                 labelClassName="font-semibold text-slate-600"
@@ -839,6 +881,7 @@ const Products = () => {
                 <option value="INACTIVE">Inactive</option>
               </SelectField>
 
+              {/* Stock Status Dropdown */}
               <SelectField
                 label="Stock Status"
                 labelClassName="font-semibold text-slate-600"
@@ -959,13 +1002,7 @@ const Products = () => {
                               >
                                 <Eye className="h-4.5 w-4.5" />
                               </button>
-                              <button
-                                onClick={() => handleEditClick(product)}
-                                className="text-blue-500 hover:text-blue-700 p-1.5 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
-                                title="Edit Product"
-                              >
-                                <Pencil className="h-4.5 w-4.5" />
-                              </button>
+
                               <button
                                 onClick={() => handleDelete(product.id)}
                                 className="text-rose-500 hover:text-rose-700 p-1.5 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
@@ -1361,7 +1398,7 @@ const Products = () => {
                                         {product.created_at && (
                                           <span className="text-[10px] text-blue-700 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-md font-semibold uppercase tracking-wider flex items-center gap-1">
                                             <Calendar className="w-3 h-3" />
-                                            {new Date(product.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                            {getTimeAgo(product.created_at)}
                                           </span>
                                         )}
                                       </div>
@@ -1711,6 +1748,24 @@ const Products = () => {
                         className="h-full w-full object-cover transition-all duration-500 group-hover:scale-[1.02]"
                       />
 
+                      {/* Product Age/Upload Date Overlay */}
+                      {activeImage?.created_at && (
+                        <span className="absolute top-4 left-4 bg-white/95 backdrop-blur-sm text-slate-700 text-[11px] font-bold py-1.5 px-3 rounded-full inline-flex items-center gap-1.5 border border-slate-200/50 shadow-lg z-10">
+                          <Calendar className="w-3.5 h-3.5 text-blue-600" />
+                          {getTimeAgo(activeImage.created_at)}
+                        </span>
+                      )}
+
+                      {/* Delete Action Overlay */}
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteImage(activeImage.id)}
+                        className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm text-red-500 p-2 rounded-full shadow-lg hover:bg-red-50 hover:text-red-600 transition-colors z-10"
+                        title="Delete this variant"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+
                       {/* Active variant tag overlay */}
                       <span className="absolute bottom-4 left-4 right-4 bg-navy-dark/95 backdrop-blur-xs text-white text-[13px] font-semibold py-2.5 px-3 rounded-xl inline-flex items-center justify-between border border-white/10 shadow-lg">
                         <span className="flex items-center gap-2">
@@ -1888,9 +1943,19 @@ const Products = () => {
         confirmText="Delete"
         confirmVariant="danger"
       />
+      <ConfirmModal
+        isOpen={showDeleteImageConfirm}
+        title="Delete Color Variant"
+        message="Are you sure you want to delete this color variant? This action cannot be undone."
+        onConfirm={confirmDeleteImage}
+        onCancel={() => { setShowDeleteImageConfirm(false); setDeleteImageId(null); }}
+        confirmText="Delete"
+        confirmVariant="danger"
+      />
     </div>
   );
 };
 
-export default Products;
+export default AdminSupplierProducts;
+
 

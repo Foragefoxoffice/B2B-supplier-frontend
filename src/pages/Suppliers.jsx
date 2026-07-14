@@ -12,6 +12,7 @@ import ConfirmModal from '../components/common/ConfirmModal';
 import { getSuppliersApi, createSupplierApi, deleteSupplierApi, updateSupplierApi } from '../commonApi/api';
 import Modal from '../components/ui/Modal';
 import { TableRowsSkeleton } from '../components/common/SkeletonLoader';
+import SelectField from '../components/common/SelectField';
 const Suppliers = () => {
   const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -298,34 +299,30 @@ const Suppliers = () => {
 
           {/* Filters */}
           <div className="flex flex-wrap gap-3 w-full md:w-auto items-center">
-            <div className="relative">
-              <select
-                value={status}
-                onChange={(e) => { setStatus(e.target.value); setPage(1); }}
-                className="appearance-none bg-white border border-slate-200 text-slate-700 rounded-xl pl-4 pr-10 py-2.5 outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 text-sm font-semibold cursor-pointer min-w-[110px]"
-              >
-                <option value="">All Status</option>
-                <option value="ACTIVE">Active</option>
-                <option value="INACTIVE">Inactive</option>
-                <option value="PENDING">Pending</option>
-              </select>
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-            </div>
-            <div className="relative">
-              <select
-                value={city}
-                onChange={(e) => { setCity(e.target.value); setPage(1); }}
-                className="appearance-none bg-white border border-slate-200 text-slate-700 rounded-xl pl-4 pr-10 py-2.5 outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 text-sm font-semibold cursor-pointer min-w-[110px]"
-              >
-                <option value="">All Cities</option>
-                <option value="Coimbatore">Coimbatore</option>
-                <option value="Salem">Salem</option>
-                <option value="Tiruppur">Tiruppur</option>
-                <option value="Erode">Erode</option>
-                <option value="Madurai">Madurai</option>
-              </select>
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-            </div>
+            <SelectField
+              value={status}
+              onChange={(e) => { setStatus(e.target.value); setPage(1); }}
+              className="rounded-xl pl-4 py-2.5 text-sm font-semibold cursor-pointer min-w-[110px]"
+              wrapperClassName="w-auto"
+            >
+              <option value="">All Status</option>
+              <option value="ACTIVE">Active</option>
+              <option value="INACTIVE">Inactive</option>
+              <option value="PENDING">Pending</option>
+            </SelectField>
+            <SelectField
+              value={city}
+              onChange={(e) => { setCity(e.target.value); setPage(1); }}
+              className="rounded-xl pl-4 py-2.5 text-sm font-semibold cursor-pointer min-w-[110px]"
+              wrapperClassName="w-auto"
+            >
+              <option value="">All Cities</option>
+              <option value="Coimbatore">Coimbatore</option>
+              <option value="Salem">Salem</option>
+              <option value="Tiruppur">Tiruppur</option>
+              <option value="Erode">Erode</option>
+              <option value="Madurai">Madurai</option>
+            </SelectField>
             <button className="flex items-center px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition-colors text-sm font-semibold">
               <Filter className="h-4 w-4 mr-2 text-slate-400" />
               Filter
@@ -567,17 +564,15 @@ const Suppliers = () => {
               />
               {errors.phone && <span className="text-red-500 text-xs">Phone is required</span>}
             </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Status</label>
-              <select
-                {...register('status')}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-600 font-medium"
-              >
-                <option value="ACTIVE">Active</option>
-                <option value="PENDING">Pending</option>
-                <option value="INACTIVE">Inactive</option>
-              </select>
-            </div>
+            <SelectField
+              label="Status"
+              {...register('status')}
+              className="px-3 py-2 font-medium"
+            >
+              <option value="ACTIVE">Active</option>
+              <option value="PENDING">Pending</option>
+              <option value="INACTIVE">Inactive</option>
+            </SelectField>
 
             {/* Address Info */}
             <div className="md:col-span-2 mt-2">

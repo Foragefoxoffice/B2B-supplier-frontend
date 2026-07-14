@@ -7,6 +7,7 @@ import {
 import { useCart } from '../../store/CartContext';
 import toast from 'react-hot-toast';
 import { useNotifications } from '../../hooks/useNotifications.jsx';
+import { getStatsApi } from '../../commonApi/api.js';
 
 const SidebarItem = ({ icon: Icon, label, to, badge, activeOverride, isOpen: isSidebarOpen, onClick }) => {
   const location = useLocation();
@@ -48,7 +49,7 @@ const SidebarItem = ({ icon: Icon, label, to, badge, activeOverride, isOpen: isS
               </div>
               <div className={`flex items-center transition-all duration-300 overflow-hidden whitespace-nowrap shrink-0 ${isSidebarOpen ? 'opacity-100' : 'opacity-0 w-0'}`}>
                 {badge && (
-                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-blue-600 text-white font-bold">
+                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-white text-[#2563EB] font-bold">
                     {badge}
                   </span>
                 )}
@@ -84,6 +85,34 @@ const DashboardLayout = () => {
 
   // Initialize notifications
   const { notifications, unreadCount } = useNotifications(user, token);
+
+  const [pendingOrdersCount, setPendingOrdersCount] = useState(0);
+
+  const fetchStats = async () => {
+    try {
+      const data = await getStatsApi();
+      if (data.success && data.data) {
+        setPendingOrdersCount(data.data.pendingOrders || 0);
+      }
+    } catch (error) {
+      console.error('Error fetching dashboard stats:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (user && token) {
+      fetchStats();
+    }
+
+    const handleNotification = (e) => {
+      const type = e.detail?.type;
+      if (['ORDER_UPDATE', 'NEW_PO'].includes(type)) {
+        fetchStats();
+      }
+    };
+    window.addEventListener('app_notification', handleNotification);
+    return () => window.removeEventListener('app_notification', handleNotification);
+  }, [user, token]);
 
   // Handle window resize to auto-close/open sidebar
   useEffect(() => {
@@ -209,20 +238,22 @@ const DashboardLayout = () => {
 
             <SectionHeader title="Orders" isOpen={isSidebarOpen} />
             {isSupplier && (
-              <SidebarItem icon={ShoppingCart} label="Purchase Orders" to="/orders" isOpen={isSidebarOpen} />
+              <SidebarItem icon={ShoppingCart} label="Purchase Orders" to="/orders" badge={pendingOrdersCount > 0 ? pendingOrdersCount : null} isOpen={isSidebarOpen} />
             )}
             {!isSupplier && (
-              <SidebarItem icon={MapPin} label="Order Tracking" to="/order-tracking" isOpen={isSidebarOpen} />
+              <SidebarItem icon={MapPin} label="Order Tracking" to="/order-tracking" badge={pendingOrdersCount > 0 ? pendingOrdersCount : null} isOpen={isSidebarOpen} />
             )}
 
             <SectionHeader title="Products & Catalog" isOpen={isSidebarOpen} />
-            <SidebarItem icon={Package} label={isSupplier ? "My Products" : "Products"} to="/products" isOpen={isSidebarOpen} />
-
             {isSupplier && (
               <>
                 <SidebarItem icon={FolderOpen} label="Categories" to="/categories" isOpen={isSidebarOpen} />
                 <SidebarItem icon={Truck} label="Transporters" to="/transporters" isOpen={isSidebarOpen} />
               </>
+            )}
+            <SidebarItem icon={Package} label={isSupplier ? "My Products" : "Products Catlogs"} to="/products" isOpen={isSidebarOpen} />
+            {!isSupplier && (
+              <SidebarItem icon={Package} label="Supplier Products" to="/supplier-products" isOpen={isSidebarOpen} />
             )}
 
             <SectionHeader title="Account" isOpen={isSidebarOpen} />
@@ -255,101 +286,92 @@ const DashboardLayout = () => {
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden w-full relative">
         {/* Top Navbar */}
-        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 z-10 w-full shrink-0">
+        {/* Top Navbar */}
+        <header className="h-[70px] bg-white/95 backdrop-blur-md border-b border-slate-200 flex items-center justify-between px-4 sm:px-6 z-10 w-full shrink-0 shadow-sm">
           <div className="flex items-center flex-1">
             <button
-              className="text-slate-400 hover:text-slate-600 mr-4 transition-transform hover:scale-105 cursor-pointer"
+              className="p-2.5 -ml-2 text-slate-500 hover:text-blue-700 hover:bg-blue-50 rounded-xl transition-all focus:outline-none"
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
             >
               <Menu className="h-5 w-5" />
             </button>
-
-            <div className="max-w-md w-full relative hidden md:block">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Search className="h-4 w-4 text-slate-300" />
-              </div>
-              <input
-                type="text"
-                placeholder="Search here..."
-                className="block w-full pl-10 pr-12 py-2 border-0 bg-slate-50 text-slate-900 rounded-lg focus:ring-1 focus:ring-blue-500 sm:text-sm placeholder:text-slate-400 transition-colors"
-              />
-              <div className="absolute inset-y-0 right-0 pr-2 flex items-center">
-                <span className="text-xs text-slate-400 bg-white px-1.5 py-0.5 rounded border border-slate-200 shadow-sm font-medium">⌘ K</span>
-              </div>
-            </div>
           </div>
 
-          <div className="flex items-center space-x-6 ml-4 shrink-0">
+          <div className="flex items-center gap-1 sm:gap-2 ml-4 shrink-0">
             <button
               id="cart-icon-nav"
-              className="text-slate-400 hover:text-blue-600 transition-colors relative cursor-pointer"
+              className="p-2.5 text-slate-500 hover:text-blue-700 hover:bg-blue-50 rounded-xl transition-all relative cursor-pointer focus:outline-none"
               onClick={() => navigate('/cart')}
             >
-              <ShoppingCart className="h-5 w-5" />
+              <ShoppingCart className="h-[22px] w-[22px]" />
               {cartStats?.totalItems > 0 && (
-                <span className="absolute -top-2 -right-2 flex h-4 w-4 items-center justify-center rounded-full bg-blue-600 ring-2 ring-white text-[9px] font-bold text-white">
+                <span className="absolute top-1.5 right-1.5 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-rose-500 border-2 border-white text-[10px] font-bold text-white shadow-sm transform translate-x-1/2 -translate-y-1/2">
                   {cartStats.totalItems}
                 </span>
               )}
             </button>
+
             <div className="relative hidden sm:block" ref={notificationRef}>
               <button
-                className="text-slate-400 hover:text-blue-600 transition-colors relative"
+                className={`p-2.5 rounded-xl transition-all relative focus:outline-none ${isNotificationOpen
+                  ? 'text-blue-700 bg-blue-50'
+                  : 'text-slate-500 hover:text-blue-700 hover:bg-blue-50'
+                  }`}
                 onClick={() => setIsNotificationOpen(!isNotificationOpen)}
               >
-                <Bell className="h-5 w-5" />
+                <Bell className="h-[22px] w-[22px]" />
                 {unreadCount > 0 && (
-                  <span className="absolute -top-2 -right-2 flex h-4 w-4 items-center justify-center rounded-full bg-blue-600 ring-2 ring-white text-[9px] font-bold text-white">
+                  <span className="absolute top-1.5 right-1.5 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-rose-500 border-2 border-white text-[10px] font-bold text-white shadow-sm transform translate-x-1/2 -translate-y-1/2">
                     {unreadCount > 99 ? '99+' : unreadCount}
                   </span>
                 )}
               </button>
 
               {isNotificationOpen && (
-                <div className="absolute right-0 mt-3 w-80 bg-white rounded-xl shadow-lg border border-slate-100 z-99 overflow-hidden transform origin-top-right transition-all flex flex-col max-h-[85vh]">
-                  <div className="px-4 py-3 border-b border-slate-100 flex justify-between items-center shrink-0">
-                    <h3 className="font-bold text-slate-800 text-sm">Notifications</h3>
+                <div className="absolute right-0 mt-3 w-80 bg-white rounded-2xl shadow-xl border border-slate-100 z-50 overflow-hidden transform origin-top-right transition-all flex flex-col max-h-[85vh]">
+                  <div className="px-5 py-4 border-b border-slate-100 flex justify-between items-center shrink-0 bg-slate-50/50">
+                    <h3 className="font-semibold text-slate-800 text-[17px]">Notifications</h3>
                     {unreadCount > 0 && (
-                      <span className="text-xs bg-blue-100 text-blue-600 font-semibold px-2 py-0.5 rounded-full">{unreadCount} new</span>
+                      <span className="text-[11px] bg-blue-600 text-white font-medium px-2.5 py-1 rounded-full shadow-sm">{unreadCount} new</span>
                     )}
                   </div>
 
                   <div className="overflow-y-auto flex-1 sidebar-scroll">
                     {notifications && notifications.length > 0 ? (
-                      <div className="divide-y divide-slate-50">
+                      <div className="divide-y divide-slate-100">
                         {notifications.slice(0, 5).map(notif => (
-                          <div key={notif.id} className={`p-4 hover:bg-slate-50 cursor-pointer transition-colors ${!notif.is_read ? 'bg-blue-50/30' : ''}`} onClick={() => navigate('/notifications')}>
-                            <div className="flex items-start gap-3">
-                              <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center shrink-0 text-blue-600 mt-0.5">
+                          <div key={notif.id} className={`p-4 hover:bg-slate-50 cursor-pointer transition-colors ${!notif.is_read ? 'bg-blue-50/40' : ''}`} onClick={() => navigate('/notifications')}>
+                            <div className="flex items-start gap-3.5">
+                              <div className={`h-9 w-9 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${!notif.is_read ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 text-slate-500'}`}>
                                 <Bell className="h-4 w-4" />
                               </div>
                               <div>
-                                <h4 className={`text-sm ${!notif.is_read ? 'font-bold text-slate-900' : 'font-medium text-slate-700'}`}>{notif.title}</h4>
-                                <p className={`text-xs mt-0.5 line-clamp-2 ${!notif.is_read ? 'text-slate-600 font-medium' : 'text-slate-500'}`}>{notif.message}</p>
-                                <p className="text-[10px] text-slate-400 mt-1 font-medium">{new Date(notif.created_at).toLocaleString()}</p>
+                                <h4 className={`text-[14px] leading-tight ${!notif.is_read ? 'font-semibold text-slate-900' : 'font-semibold text-slate-700'}`}>{notif.title}</h4>
+                                <p className={`text-[13px] mt-1 line-clamp-2 ${!notif.is_read ? 'text-slate-600 font-medium' : 'text-slate-500'}`}>{notif.message}</p>
+                                <p className="text-[11px] text-slate-400 mt-1.5 font-medium">{new Date(notif.created_at).toLocaleString()}</p>
                               </div>
                             </div>
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <div className="py-12 flex flex-col items-center justify-center bg-slate-50">
-                        <div className="h-16 w-16 bg-white rounded-full flex items-center justify-center shadow-sm mb-3">
-                          <Bell className="h-8 w-8 text-slate-300" strokeWidth={1.5} />
+                      <div className="py-12 flex flex-col items-center justify-center bg-white">
+                        <div className="h-16 w-16 bg-slate-50 rounded-full flex items-center justify-center mb-4 border border-slate-100">
+                          <Bell className="h-7 w-7 text-slate-300" strokeWidth={2} />
                         </div>
-                        <p className="text-sm font-semibold text-slate-700">No new notifications</p>
-                        <p className="text-xs text-slate-400 mt-1">You're all caught up!</p>
+                        <p className="text-[15px] font-bold text-slate-700">No notifications</p>
+                        <p className="text-[13px] text-slate-500 mt-1">You're all caught up!</p>
                       </div>
                     )}
                   </div>
 
-                  <div className="border-t border-slate-100 p-2 shrink-0">
+                  <div className="border-t border-slate-100 p-2 shrink-0 bg-slate-50/50">
                     <button
                       onClick={() => {
                         setIsNotificationOpen(false);
                         navigate('/notifications');
                       }}
-                      className="w-full py-2 text-sm font-semibold text-slate-600 hover:text-blue-600 hover:bg-slate-50 rounded-lg transition-colors"
+                      className="w-full py-2.5 text-[14px] font-semibold text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-xl transition-colors"
                     >
                       View all notifications
                     </button>
@@ -357,21 +379,22 @@ const DashboardLayout = () => {
                 </div>
               )}
             </div>
-            <button className="text-slate-400 hover:text-blue-600 transition-colors relative hidden sm:block">
-              <Mail className="h-5 w-5" />
-              <span className="absolute -top-2 -right-2 flex h-4 w-4 items-center justify-center rounded-full bg-blue-600 ring-2 ring-white text-[9px] font-bold text-white">12</span>
-            </button>
-            <div className="flex items-center border-l border-slate-200 pl-6 cursor-pointer">
+
+            <div className="hidden sm:block w-[1px] h-8 bg-slate-200 mx-2"></div>
+
+            <div className="flex items-center gap-3 pl-1.5 pr-4 py-1.5 rounded-full hover:bg-slate-50 border border-transparent cursor-pointer transition-all">
               <img
-                src={`https://ui-avatars.com/api/?name=${encodeURIComponent((user?.first_name || 'Admin') + ' ' + (user?.last_name || 'User'))}&background=0D8ABC&color=fff&rounded=true`}
+                src={`https://ui-avatars.com/api/?name=${encodeURIComponent((user?.first_name || 'Admin') + ' ' + (user?.last_name || 'User'))}&background=0D8ABC&color=fff&rounded=true&bold=true`}
                 alt="User"
-                className="h-9 w-9 rounded-full object-cover border-2 border-white shadow-sm"
+                className="h-9 w-9 rounded-full object-cover shadow-sm"
               />
-              <div className="ml-3 hidden sm:block">
-                <p className="text-sm font-bold text-slate-800 leading-none mb-1">
+              <div className="hidden sm:flex flex-col items-start">
+                <p className="text-[14px] font-bold text-slate-800 leading-tight">
                   {user?.company_name || `${user?.first_name || 'Admin'} ${user?.last_name || 'User'}`}
                 </p>
-                <p className="text-xs text-slate-500 font-medium">{user?.role === 'SUPPLIER' ? 'Supplier' : 'Admin'}</p>
+                <p className="text-[11px] text-slate-500 font-bold uppercase tracking-wider mt-0.5">
+                  {user?.role === 'SUPPLIER' ? 'Supplier' : 'Admin'}
+                </p>
               </div>
             </div>
           </div>
