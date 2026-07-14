@@ -15,6 +15,7 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
+  const [showSuccessLoader, setShowSuccessLoader] = useState(false);
 
   // Redirect to dashboard if already logged in
   useEffect(() => {
@@ -36,13 +37,15 @@ const Login = () => {
         localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify(data.user));
         toast.success('Logged in successfully!');
-        navigate('/dashboard');
+        setShowSuccessLoader(true);
+        setTimeout(() => {
+          navigate('/dashboard');
+        }, 2500);
       }
     } catch (err) {
       const errMsg = err.response?.data?.message || 'Login failed. Please try again.';
       setError(errMsg);
       toast.error(errMsg);
-    } finally {
       setLoading(false);
     }
   };
@@ -321,6 +324,86 @@ const Login = () => {
           </div>
         </motion.div>
       </div>
+
+      {/* Premium Success Loader Overlay */}
+      {showSuccessLoader && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.4 }}
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-gradient-to-br from-[#0a1b3f] via-[#030a1c] to-[#01040d] text-white"
+        >
+          {/* Subtle background glows */}
+          <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-500/10 blur-[130px] rounded-full pointer-events-none" />
+          <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-[#D4AF37]/5 blur-[130px] rounded-full pointer-events-none" />
+
+          <div className="flex flex-col items-center max-w-sm text-center px-6 relative z-10">
+            {/* Logo Container */}
+            <motion.div
+              initial={{ scale: 0.7, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{
+                type: "spring",
+                stiffness: 90,
+                damping: 15,
+                delay: 0.1
+              }}
+              className="relative mb-6"
+            >
+              {/* Soft gold breathing glow behind the logo */}
+              <motion.div 
+                className="absolute inset-0 bg-[#D4AF37] blur-[30px] rounded-full"
+                animate={{ opacity: [0.15, 0.3, 0.15] }}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+              />
+
+              <img
+                src="/images/kannan_silks_logo.png"
+                alt="Kannan Silks Logo"
+                className="relative w-36 h-36 object-contain rounded-full bg-white p-3.5 shadow-[0_0_40px_rgba(212,175,55,0.35)] border border-[#D4AF37]/35"
+              />
+            </motion.div>
+
+            {/* Portal Title */}
+            <motion.h2
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.3, duration: 0.5 }}
+              className="text-3xl font-bold tracking-wide mb-1"
+            >
+              Kannan <span className="bg-gradient-to-r from-[#D4AF37] via-[#FFF38C] to-[#D4AF37] bg-clip-text text-transparent drop-shadow-sm">Silks</span>
+            </motion.h2>
+
+            <motion.p
+              initial={{ y: 15, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.45, duration: 0.5 }}
+              className="text-blue-200/70 text-xs font-semibold uppercase tracking-wider mb-8"
+            >
+              Supplier Portal
+            </motion.p>
+
+            {/* Animated Three Dots */}
+            <div className="flex items-center justify-center gap-2.5">
+              {[0, 1, 2].map((idx) => (
+                <motion.div
+                  key={idx}
+                  className="w-3 h-3 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#FFF38C] shadow-[0_0_8px_rgba(212,175,55,0.6)]"
+                  animate={{
+                    y: ["0%", "-80%", "0%"]
+                  }}
+                  transition={{
+                    duration: 0.6,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                    delay: idx * 0.15
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        </motion.div>
+      )}
     </div>
   );
 };

@@ -158,8 +158,44 @@ const DashboardLayout = () => {
 
   if (loading) {
     return (
-      <div className="flex h-screen w-screen items-center justify-center bg-[#F8FAFC]">
-        <div className="animate-spin h-8 w-8 text-blue-600 rounded-full border-4 border-slate-200 border-t-blue-600"></div>
+      <div className="flex h-screen w-screen items-center justify-center bg-gradient-to-br from-[#0a1b3f] via-[#030a1c] to-[#01040d] text-white">
+        {/* Subtle background glows */}
+        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-500/10 blur-[130px] rounded-full pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-[#D4AF37]/5 blur-[130px] rounded-full pointer-events-none" />
+
+        <div className="flex flex-col items-center max-w-sm text-center px-6 relative z-10">
+          {/* Logo Container */}
+          <div className="relative mb-6">
+            {/* Soft gold breathing glow behind the logo */}
+            <div className="absolute inset-0 bg-[#D4AF37] blur-[30px] rounded-full animate-pulse opacity-20" />
+
+            <img
+              src="/images/kannan_silks_logo.png"
+              alt="Kannan Silks Logo"
+              className="relative w-36 h-36 object-contain rounded-full bg-white p-3.5 shadow-[0_0_40px_rgba(212,175,55,0.35)] border border-[#D4AF37]/35"
+            />
+          </div>
+
+          {/* Portal Title */}
+          <h2 className="text-3xl font-bold tracking-wide mb-1">
+            Kannan <span className="bg-gradient-to-r from-[#D4AF37] via-[#FFF38C] to-[#D4AF37] bg-clip-text text-transparent drop-shadow-sm">Silks</span>
+          </h2>
+
+          <p className="text-blue-200/70 text-xs font-semibold uppercase tracking-wider mb-8">
+            Supplier Portal
+          </p>
+
+          {/* Animated Three Dots */}
+          <div className="flex items-center justify-center gap-2.5">
+            {[0, 1, 2].map((idx) => (
+              <div
+                key={idx}
+                className="w-3 h-3 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#FFF38C] shadow-[0_0_8px_rgba(212,175,55,0.6)] animate-bounce"
+                style={{ animationDelay: `${idx * 0.15}s` }}
+              />
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
