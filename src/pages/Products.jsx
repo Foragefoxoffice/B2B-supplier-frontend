@@ -1015,7 +1015,7 @@ const Products = () => {
 
             {/* Table Pagination Footer */}
             {!loading && totalItems > 0 && (
-              <div className="flex flex-col sm:flex-row justify-between items-center px-6 py-4 border-t border-slate-100 gap-4 bg-slate-50/20 text-sm">
+              <div className="flex flex-col sm:flex-row justify-between items-center px-6 py-4 border-t border-slate-100 bg-slate-50/20 text-sm">
                 <div className="text-slate-500 font-medium">
                   Showing <span className="text-slate-800 font-bold">{startIndex + 1}</span> to{' '}
                   <span className="text-slate-800 font-bold">{Math.min(startIndex + itemsPerPage, totalItems)}</span> of{' '}
@@ -1024,7 +1024,7 @@ const Products = () => {
 
                 <div className="flex flex-wrap items-center gap-4.5">
                   <div className="flex items-center gap-2">
-                    <span className="text-slate-400 font-semibold text-xs uppercase tracking-wider">Per Page:</span>
+                    <span className="text-slate-400 font-semibold text-xs">Per Page:</span>
                     <SelectField
                       value={itemsPerPage}
                       onChange={(e) => {
