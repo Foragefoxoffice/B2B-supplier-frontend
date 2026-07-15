@@ -40,7 +40,7 @@ const ProductGallery = ({
                 const cartRect = cartIcon.getBoundingClientRect();
 
                 const flyImg = document.createElement('img');
-                flyImg.src = `http://localhost:5000${variant.url}`;
+                flyImg.src = `${import.meta.env.VITE_API_URL || "http://localhost:5000"}${variant.url}`;
                 flyImg.style.position = 'fixed';
                 flyImg.style.top = `${btnRect.top}px`;
                 flyImg.style.left = `${btnRect.left + btnRect.width / 2}px`;
@@ -86,9 +86,9 @@ const ProductGallery = ({
             <div className="flex items-start justify-between mb-2">
                 <div>
                     <h1 className="text-2xl font-semibold text-navy-dark flex items-center gap-3">
-                        {product.name}
+                        {product.name?.toUpperCase()}
                         <span className="text-xs font-bold bg-blue-100 text-blue-700 px-2.5 py-1 rounded-md tracking-wider">
-                            {product.product_code}
+                            {product.product_code?.toUpperCase()}
                         </span>
                     </h1>
                     <div className="text-sm text-slate-500 mt-2 flex items-center gap-4">
@@ -132,7 +132,7 @@ const ProductGallery = ({
                             {/* Image Section */}
                             <div className="w-full aspect-square bg-slate-50 relative group overflow-hidden border-b border-slate-50">
                                 <ImageZoomModal
-                                    src={`http://localhost:5000${variant.url}`}
+                                    src={`${import.meta.env.VITE_API_URL || "http://localhost:5000"}${variant.url}`}
                                     alt={variant.color}
                                     className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 ${isOutOfStock ? 'opacity-70 grayscale-[30%]' : ''}`}
                                 />
@@ -159,11 +159,11 @@ const ProductGallery = ({
                                         {variant.color || 'NEW ARRIVAL'}
                                     </span>
                                 </div>
-                                <h3 className="font-semibold text-navy-dark text-[16px] leading-tight mb-2 truncate" title={product.name}>{product.name}</h3>
+                                <h3 className="font-semibold text-navy-dark text-[16px] leading-tight mb-2 truncate" title={product.name?.toUpperCase()}>{product.name?.toUpperCase()}</h3>
 
                                 <div className="flex flex-wrap items-center gap-2 mb-4">
                                     <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded uppercase">
-                                        CODE: {product.product_code}
+                                        CODE: {product.product_code?.toUpperCase()}
                                     </span>
                                     <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded uppercase">
                                         {product.material || 'PURE SILK'}

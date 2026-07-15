@@ -241,17 +241,17 @@ const Cart = () => {
                                                     <div className="col-span-1 md:col-span-6 flex gap-4">
                                                         <div className="w-20 h-24 shrink-0 rounded-xl overflow-hidden bg-slate-50 border border-slate-100 relative">
                                                             {item.variant.url ? (
-                                                                <ImageZoomModal src={`http://localhost:5000${item.variant.url}`} alt={item.product.name} className="w-full h-full object-cover" />
+                                                                <ImageZoomModal src={`${import.meta.env.VITE_API_URL || "http://localhost:5000"}${item.variant.url}`} alt={item.product?.name?.toUpperCase()} className="w-full h-full object-cover" />
                                                             ) : (
                                                                 <div className="w-full h-full flex items-center justify-center"><Package className="w-6 h-6 text-slate-300" /></div>
                                                             )}
                                                         </div>
                                                         <div className="flex flex-col justify-center">
-                                                            <h3 className="font-semibold text-navy-dark text-[16px] leading-tight mb-1" title={item.product.name}>
-                                                                {item.product.name}
+                                                            <h3 className="font-semibold text-navy-dark text-[16px] leading-tight mb-1" title={item.product?.name?.toUpperCase()}>
+                                                                {item.product?.name?.toUpperCase()}
                                                             </h3>
                                                             <p className="text-[13px] text-slate-500">{item.product.category?.name || item.variant.color || 'Premium Quality'}</p>
-                                                            <p className="text-[12px] text-slate-400 mt-1">SKU: {item.product.product_code}</p>
+                                                            <p className="text-[12px] text-slate-400 mt-1">SKU: {item.product?.product_code?.toUpperCase()}</p>
                                                         </div>
                                                     </div>
 

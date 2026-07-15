@@ -385,7 +385,7 @@ const Orders = () => {
                         <div className="flex items-center gap-3">
                           <div className="h-12 w-12 rounded-lg bg-slate-100 flex-shrink-0 border border-slate-200 overflow-hidden">
                             {itemImage ? (
-                              <ImageZoomModal src={`http://localhost:5000${itemImage}`} alt={firstItem?.name} className="h-full w-full object-cover" />
+                              <ImageZoomModal src={`${import.meta.env.VITE_API_URL || "http://localhost:5000"}${itemImage}`} alt={firstItem?.name} className="h-full w-full object-cover" />
                             ) : (
                               <div className="h-full w-full flex items-center justify-center text-slate-400">
                                 <FileText size={20} />

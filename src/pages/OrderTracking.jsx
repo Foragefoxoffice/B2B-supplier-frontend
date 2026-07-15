@@ -12,7 +12,7 @@ import ConfirmModal from '../components/common/ConfirmModal';
 const getFrontImageUrl = (item) => {
     if (!item?.product?.images || item.product.images.length === 0) return null;
     const frontImage = item.product.images.find(img => img.is_primary);
-    return `http://localhost:5000${(frontImage || item.product.images[0]).url}`;
+    return `${import.meta.env.VITE_API_URL || "http://localhost:5000"}${(frontImage || item.product.images[0]).url}`;
 };
 
 const OrderTracking = () => {
@@ -168,7 +168,7 @@ const OrderTracking = () => {
 
         if (currentStep === -1) {
             return (
-                <div className="flex items-center w-full max-w-[320px]">
+                <div className="flex items-center w-full min-w-[300px] max-w-[320px]">
                     <div className="flex flex-col items-center flex-1">
                         <motion.div
                             initial={{ scale: 0 }}
@@ -196,7 +196,7 @@ const OrderTracking = () => {
         }
 
         return (
-            <div className="flex items-center w-full max-w-[320px]">
+            <div className="flex items-center w-full min-w-[300px] max-w-[320px]">
                 {steps.map((step, index) => {
                     const stepNumber = index + 1;
                     const isCompleted = stepNumber <= currentStep;
@@ -402,13 +402,13 @@ const OrderTracking = () => {
                     <table className="w-full text-left text-sm whitespace-nowrap">
                         <thead className="bg-slate-50/80 border-b border-slate-100 text-slate-600 font-medium text-[15px]">
                             <tr>
-                                <th className="px-6 py-5 font-semibold">Order Details</th>
-                                <th className="px-6 py-5 font-semibold">Order Date</th>
-                                <th className="px-6 py-5 font-semibold">Items</th>
-                                <th className="px-6 py-5 font-semibold">Order Value</th>
-                                <th className="px-6 py-5 font-semibold">Status</th>
-                                <th className="px-6 py-5 font-semibold">Tracking Timeline</th>
-                                <th className="px-6 py-5 font-semibold text-right">Actions</th>
+                                <th className="px-6 py-5 font-semibold min-w-[250px]">Order Details</th>
+                                <th className="px-6 py-5 font-semibold min-w-[160px]">Order Date</th>
+                                <th className="px-6 py-5 font-semibold min-w-[120px]">Items</th>
+                                <th className="px-6 py-5 font-semibold min-w-[140px]">Order Value</th>
+                                <th className="px-6 py-5 font-semibold min-w-[160px]">Status</th>
+                                <th className="px-6 py-5 font-semibold min-w-[320px]">Tracking Timeline</th>
+                                <th className="px-6 py-5 font-semibold text-right min-w-[120px]">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
@@ -500,7 +500,7 @@ const OrderTracking = () => {
                                                         </p>
                                                     </div>
                                                 </td>
-                                                <td className="px-6 py-4 w-[340px]">
+                                                <td className="px-6 py-4 min-w-[340px]">
                                                     <div className="pt-2 pb-6">
                                                         <Stepper currentStep={statusInfo.step} />
                                                     </div>

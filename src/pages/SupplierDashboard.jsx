@@ -136,12 +136,12 @@ const SupplierDashboard = () => {
               
               if (qty === 0) {
                 setTimeout(() => {
-                  showAnimatedToast('Out of Stock', `"${p.name}" (${variantName}) is out of stock.`, '🛑', 'red');
+                  showAnimatedToast('Out of Stock', `"${p.name?.toUpperCase()}" (${variantName}) is out of stock.`, '🛑', 'red');
                 }, delay);
                 delay += 400;
               } else if (qty < 3) {
                 setTimeout(() => {
-                  showAnimatedToast('Low Stock Alert', `"${p.name}" (${variantName}) has low stock (${qty} left).`, '⚠️', 'orange');
+                  showAnimatedToast('Low Stock Alert', `"${p.name?.toUpperCase()}" (${variantName}) has low stock (${qty} left).`, '⚠️', 'orange');
                 }, delay);
                 delay += 400;
               }

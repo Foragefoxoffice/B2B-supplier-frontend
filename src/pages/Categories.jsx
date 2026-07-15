@@ -161,7 +161,7 @@ const Categories = () => {
                       </span>
                     </td>
                     <td className="py-4 px-6 font-semibold text-slate-800 text-sm">
-                      {category.name}
+                      {category.name?.toUpperCase()}
                     </td>
                     <td className="py-4 px-6 text-right">
                       <div className="flex items-center justify-end gap-3">
@@ -267,7 +267,8 @@ const Categories = () => {
             <label className="block text-sm font-semibold text-slate-700 mb-2">Category Name <span className='text-red-500'>*</span></label>
             <input
               {...register('name', { required: true })}
-              className="w-full border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 transition-all text-slate-800 text-sm bg-slate-50 hover:bg-slate-100/50"
+                onInput={(e) => e.target.value = e.target.value.toUpperCase()}
+                className="w-full border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 transition-all text-slate-800 text-sm bg-slate-50 hover:bg-slate-100/50 uppercase"
               placeholder="e.g. Multi Color Checkd"
             />
             {errors.name && <span className="text-red-500 text-xs mt-1 block">Category Name is required</span>}

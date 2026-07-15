@@ -284,10 +284,13 @@ const DashboardLayout = () => {
             {isSupplier && (
               <>
                 <SidebarItem icon={FolderOpen} label="Categories" to="/categories" isOpen={isSidebarOpen} />
-                <SidebarItem icon={Truck} label="Transporters" to="/transporters" isOpen={isSidebarOpen} />
               </>
             )}
             <SidebarItem icon={Package} label={isSupplier ? "My Products" : "Products Catlogs"} to="/products" isOpen={isSidebarOpen} />
+
+            {isSupplier && (
+              <SidebarItem icon={Truck} label="Transporters" to="/transporters" isOpen={isSidebarOpen} />
+            )}
             {!isSupplier && (
               <SidebarItem icon={Package} label="Supplier Products" to="/supplier-products" isOpen={isSidebarOpen} />
             )}

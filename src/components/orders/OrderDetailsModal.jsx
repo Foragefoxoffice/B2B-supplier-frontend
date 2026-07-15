@@ -143,7 +143,7 @@ const OrderDetailsModal = ({ order, onClose, onUpdateStatus }) => {
                                     {order.booking_copy_url && (
                                         <div className="flex flex-col gap-1.5">
                                             <p className="text-[13px] font-semibold text-teal-800 tracking-wide">Booking Copy (LR)</p>
-                                            <a href={`http://localhost:5000${order.booking_copy_url}`} target="_blank" rel="noreferrer" className="bg-white px-4 py-2.5 rounded-xl border border-teal-50 shadow-[0_2px_10px_-4px_rgba(20,116,105,0.1)] hover:bg-teal-50/50 hover:border-teal-100 transition-all font-medium text-teal-700 text-[14px] inline-flex items-center gap-2.5 w-fit">
+                                            <a href={`${import.meta.env.VITE_API_URL || "http://localhost:5000"}${order.booking_copy_url}`} target="_blank" rel="noreferrer" className="bg-white px-4 py-2.5 rounded-xl border border-teal-50 shadow-[0_2px_10px_-4px_rgba(20,116,105,0.1)] hover:bg-teal-50/50 hover:border-teal-100 transition-all font-medium text-teal-700 text-[14px] inline-flex items-center gap-2.5 w-fit">
                                                 <FileText className="w-4 h-4 text-teal-600" /> View File
                                             </a>
                                         </div>
@@ -151,7 +151,7 @@ const OrderDetailsModal = ({ order, onClose, onUpdateStatus }) => {
                                     {order.invoice_copy_url && (
                                         <div className="flex flex-col gap-1.5">
                                             <p className="text-[13px] font-semibold text-teal-800 tracking-wide">Invoice Copy</p>
-                                            <a href={`http://localhost:5000${order.invoice_copy_url}`} target="_blank" rel="noreferrer" className="bg-white px-4 py-2.5 rounded-xl border border-teal-50 shadow-[0_2px_10px_-4px_rgba(20,116,105,0.1)] hover:bg-teal-50/50 hover:border-teal-100 transition-all font-medium text-teal-700 text-[14px] inline-flex items-center gap-2.5 w-fit">
+                                            <a href={`${import.meta.env.VITE_API_URL || "http://localhost:5000"}${order.invoice_copy_url}`} target="_blank" rel="noreferrer" className="bg-white px-4 py-2.5 rounded-xl border border-teal-50 shadow-[0_2px_10px_-4px_rgba(20,116,105,0.1)] hover:bg-teal-50/50 hover:border-teal-100 transition-all font-medium text-teal-700 text-[14px] inline-flex items-center gap-2.5 w-fit">
                                                 <FileText className="w-4 h-4 text-teal-600" /> View File
                                             </a>
                                         </div>
@@ -167,7 +167,7 @@ const OrderDetailsModal = ({ order, onClose, onUpdateStatus }) => {
                         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
                             {order.items?.map((item, idx) => {
                                 const matchedImage = getOrderedImageObj(item, order.remarks);
-                                const imageUrl = matchedImage ? `http://localhost:5000${matchedImage.url}` : `https://ui-avatars.com/api/?name=${item.product?.name || 'O'}&background=random&color=fff&rounded=false&size=128`;
+                                const imageUrl = matchedImage ? `${import.meta.env.VITE_API_URL || "http://localhost:5000"}${matchedImage.url}` : `https://ui-avatars.com/api/?name=${item.product?.name || 'O'}&background=random&color=fff&rounded=false&size=128`;
 
                                 let color = null;
                                 const targetRemarks = item.remarks || order.remarks;
@@ -207,7 +207,7 @@ const OrderDetailsModal = ({ order, onClose, onUpdateStatus }) => {
 
                                             <div className="flex items-center justify-between mb-2">
                                                 <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600 uppercase tracking-wider">
-                                                    {item.product?.product_code || 'N/A'}
+                                                    {item.product?.product_code?.toUpperCase() || 'N/A'}
                                                 </span>
                                             </div>
 

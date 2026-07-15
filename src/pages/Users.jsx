@@ -112,7 +112,7 @@ const Users = () => {
     <div className="h-full flex flex-col p-0 animate-fade-in relative z-10">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
         <div>
-          <h1 className="text-3xl font-semibold text-slate-800 tracking-tight flex items-center">
+          <h1 className="text-2xl font-semibold text-slate-800 tracking-tight flex items-center">
             <UsersIcon className="mr-3 h-8 w-8 text-blue-600" />
             Staff Management
           </h1>
@@ -120,7 +120,7 @@ const Users = () => {
         </div>
         <button
           onClick={openAddModal}
-          className="flex items-center px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 font-medium"
+          className="flex items-center px-4 py-2 bg-active-btn text-white rounded-xl shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 font-medium"
         >
           <Plus className="w-5 h-5 mr-2" />
           Add Staff
@@ -208,7 +208,7 @@ const Users = () => {
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">First Name *</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">First Name <span className='text-red-500'>*</span></label>
               <input
                 {...register('first_name', { required: 'First name is required' })}
                 className="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
@@ -217,7 +217,7 @@ const Users = () => {
               {errors.first_name && <p className="mt-1 text-xs text-red-500">{errors.first_name.message}</p>}
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Last Name *</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Last Name <span className='text-red-500'>*</span></label>
               <input
                 {...register('last_name', { required: 'Last name is required' })}
                 className="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
@@ -229,7 +229,7 @@ const Users = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Email *</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Email <span className='text-red-500'>*</span></label>
               <input
                 {...register('email', {
                   required: !editingUser ? 'Email is required' : false,
@@ -254,7 +254,7 @@ const Users = () => {
 
           {!editingUser && (
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Password *</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Password <span className='text-red-500'>*</span></label>
               <input
                 {...register('password', { required: 'Password is required', minLength: { value: 6, message: 'Minimum 6 characters' } })}
                 className="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
@@ -269,7 +269,7 @@ const Users = () => {
             <SelectField
               label="Role *"
               {...register('role_id', { required: 'Role is required' })}
-              className="px-4 py-2.5 rounded-xl text-sm"
+              className="px-4 py-3 border border-slate-300 rounded-xl text-sm"
               error={errors.role_id?.message}
             >
               <option value="">Select Role</option>
@@ -303,7 +303,7 @@ const Users = () => {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-5 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-medium transition-colors shadow-sm disabled:opacity-70 disabled:cursor-not-allowed flex items-center"
+              className="px-5 py-2.5 bg-active-btn text-white rounded-xl hover:bg-blue-700 font-medium transition-colors shadow-sm disabled:opacity-70 disabled:cursor-not-allowed flex items-center"
             >
               {isSubmitting ? (
                 <>

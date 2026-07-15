@@ -3,7 +3,7 @@ import {
   CheckCircle, Trash2, Pencil, Eye,
   Search, Filter, Download, Plus, ChevronLeft, ChevronRight,
   Package, AlertTriangle, Bell, FileText, ArrowUpRight, ArrowDownRight, Image, Building,
-  BookAIcon, Calendar
+  BookAIcon, Calendar, Loader2, X
 } from 'lucide-react';
 import ConfirmModal from '../components/common/ConfirmModal';
 import { useForm } from 'react-hook-form';
@@ -13,6 +13,7 @@ import Modal from '../components/ui/Modal';
 import ProductGallery from './ProductGallery';
 import ImageZoomModal from '../components/common/ImageZoomModal';
 import { getPaletteSync } from 'colorthief';
+import imageCompression from 'browser-image-compression';
 import namer from 'color-namer';
 import { TableSkeleton } from '../components/common/SkeletonLoader';
 import SelectField from '../components/common/SelectField';
@@ -81,6 +82,7 @@ const Products = () => {
 
   const [editingProduct, setEditingProduct] = useState(null);
   const [productImages, setProductImages] = useState([]);
+  const [isCompressing, setIsCompressing] = useState(false);
 
   const [viewingProductImagesProduct, setViewingProductImagesProduct] = useState(null);
   const [isViewImagesModalOpen, setIsViewImagesModalOpen] = useState(false);
@@ -204,8 +206,36 @@ const Products = () => {
   const { register, handleSubmit, reset, formState: { errors } } = useForm();
 
   const handleFileChange = async (e) => {
-    if (e.target.files) {
-      const files = Array.from(e.target.files);
+    if (e.target.files && e.target.files.length > 0) {
+      setIsCompressing(true);
+      let files = Array.from(e.target.files);
+
+      const options = {
+        maxSizeMB: 0.15, // Stricter limit to ensure it's under 200kb
+        maxWidthOrHeight: 1280, // Reduce max resolution
+        useWebWorker: true,
+        initialQuality: 0.7 // Start at lower quality to guarantee size limit
+      };
+
+      try {
+        files = await Promise.all(
+          files.map(async (file) => {
+            if (file.type.startsWith('image/')) {
+              try {
+                return await imageCompression(file, options);
+              } catch (error) {
+                console.error('Error compressing image:', error);
+                return file;
+              }
+            }
+            return file;
+          })
+        );
+      } catch (error) {
+        console.error('Error during image compression:', error);
+      } finally {
+        setIsCompressing(false);
+      }
 
       const newFilesPromises = files.map(file => {
         return new Promise((resolve) => {
@@ -608,7 +638,7 @@ const Products = () => {
         if (product.status === 'PENDING') {
           await approveProductApi(product.id, 'APPROVED');
         }
-        toast.success(`Successfully placed ${successCount} purchase orders for ${product.name}!`);
+        toast.success(`Successfully placed ${successCount} purchase orders for ${product.name?.toUpperCase()}!`);
         setVariantQuantities({});
         fetchProducts();
       } else {
@@ -822,7 +852,7 @@ const Products = () => {
               >
                 <option value="">All Categories</option>
                 {categories.map(c => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
+                  <option key={c.id} value={c.id}>{c.name?.toUpperCase()}</option>
                 ))}
               </SelectField>
 
@@ -916,14 +946,14 @@ const Products = () => {
                             <div className="flex items-center gap-3">
                               <div className="h-10 w-10 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-center overflow-hidden shrink-0">
                                 {product.images && product.images.length > 0 ? (
-                                  <ImageZoomModal src={`http://localhost:5000${product.images[0].url}`} alt={product.name} className="h-full w-full object-cover" />
+                                  <ImageZoomModal src={`${import.meta.env.VITE_API_URL || "http://localhost:5000"}${product.images[0].url}`} alt={product.name?.toUpperCase()} className="h-full w-full object-cover" />
                                 ) : (
                                   <span className="text-[10px] text-slate-400 font-bold uppercase">No image</span>
                                 )}
                               </div>
                               <div className="min-w-0">
-                                <span className="font-semibold text-slate-800 text-md block truncate max-w-[200px]" title={product.name}>
-                                  {product.name}
+                                <span className="font-semibold text-slate-800 text-md block truncate max-w-[200px]" title={product.name?.toUpperCase()}>
+                                  {product.name?.toUpperCase()}
                                 </span>
                                 <span className="text-xs text-slate-400 block truncate max-w-[200px]" title={product.description || 'Premium Quality'}>
                                   {product.description || 'Premium Quality'}
@@ -931,7 +961,7 @@ const Products = () => {
                               </div>
                             </div>
                           </td>
-                          <td className="py-4 px-4 text-sm font-semibold text-slate-500">{product.product_code}</td>
+                          <td className="py-4 px-4 text-sm font-semibold text-slate-500">{product.product_code?.toUpperCase()}</td>
                           <td className="py-4 px-4 text-sm text-slate-600 font-medium">{product.category?.name}</td>
                           <td className="py-4 px-4 text-sm font-semibold text-slate-800">
                             ₹{parseFloat(product.price).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -1126,7 +1156,7 @@ const Products = () => {
                         </div>
                         <div className="flex-1 min-w-0">
                           <span className={`text-sm block truncate ${isSelected ? 'font-bold text-blue-900' : 'font-semibold text-slate-800'}`}>
-                            {s.name}
+                            {s.name?.toUpperCase()}
                           </span>
                           <span className="text-[10px] text-slate-400 block tracking-wider font-medium uppercase">{s.supplier_code}</span>
                         </div>
@@ -1303,8 +1333,8 @@ const Products = () => {
                                   <div className="aspect-[8/7] bg-slate-50 relative overflow-hidden shrink-0 border-b border-slate-100/50">
                                     {coverImage ? (
                                       <img
-                                        src={`http://localhost:5000${coverImage}`}
-                                        alt={product.name}
+                                        src={`${import.meta.env.VITE_API_URL || "http://localhost:5000"}${coverImage}`}
+                                        alt={product.name?.toUpperCase()}
                                         className="h-full w-full object-cover group-hover:scale-104 transition-transform duration-500 ease-in-out"
                                       />
                                     ) : (
@@ -1344,14 +1374,14 @@ const Products = () => {
                                       </span>
 
                                       {/* Product Name */}
-                                      <h4 className="font-bold text-navy-dark text-sm leading-snug uppercase tracking-wide truncate mb-2" title={product.name}>
-                                        {product.name}
+                                      <h4 className="font-bold text-navy-dark text-sm leading-snug uppercase tracking-wide truncate mb-2" title={product.name?.toUpperCase()}>
+                                        {product.name?.toUpperCase()}
                                       </h4>
 
                                       {/* Badges Row */}
                                       <div className="flex flex-wrap items-center gap-1.5 mb-3.5">
                                         <span className="text-[10px] text-slate-500 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md font-semibold uppercase tracking-wider">
-                                          Code: {product.product_code}
+                                          Code: {product.product_code?.toUpperCase()}
                                         </span>
                                         {product.material && (
                                           <span className="text-[10px] text-amber-800 bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-md font-semibold uppercase tracking-wider">
@@ -1487,7 +1517,8 @@ const Products = () => {
               <label className="block text-sm font-semibold text-slate-700 mb-1">Design Code <span className="text-red-500">*</span></label>
               <input
                 {...register('product_code', { required: true })}
-                className="w-full border border-slate-200 rounded-xl px-3 py-3 outline-none focus:ring-2 focus:ring-blue-600 text-sm bg-slate-50/50 hover:bg-slate-100/20 transition-all"
+                onInput={(e) => e.target.value = e.target.value.toUpperCase()}
+                className="w-full border border-slate-200 rounded-xl px-3 py-3 outline-none focus:ring-2 focus:ring-blue-600 text-sm bg-slate-50/50 hover:bg-slate-100/20 transition-all uppercase"
                 placeholder="e.g. AGS700"
               />
               {errors.product_code && <span className="text-red-500 text-xs">Design Code is required</span>}
@@ -1499,7 +1530,8 @@ const Products = () => {
                 <span className="text-red-500">*</span></label>
               <input
                 {...register('name', { required: true })}
-                className="w-full border border-slate-200 rounded-xl px-3 py-3 outline-none focus:ring-2 focus:ring-blue-600 text-sm bg-slate-50/50 hover:bg-slate-100/20 transition-all"
+                onInput={(e) => e.target.value = e.target.value.toUpperCase()}
+                className="w-full border border-slate-200 rounded-xl px-3 py-3 outline-none focus:ring-2 focus:ring-blue-600 text-sm bg-slate-50/50 hover:bg-slate-100/20 transition-all uppercase"
                 placeholder="e.g. PARKAVI"
               />
               {errors.name && <span className="text-red-500 text-xs">Design Name is required</span>}
@@ -1514,7 +1546,7 @@ const Products = () => {
             >
               <option value="">-- Select Category --</option>
               {categories.map(c => (
-                <option key={c.id} value={c.id}>{c.name}</option>
+                <option key={c.id} value={c.id}>{c.name?.toUpperCase()}</option>
               ))}
             </SelectField>
 
@@ -1571,7 +1603,7 @@ const Products = () => {
             >
               <option value="">-- Select Supplier --</option>
               {suppliers.map(s => (
-                <option key={s.id} value={s.id}>{s.name}</option>
+                <option key={s.id} value={s.id}>{s.name?.toUpperCase()}</option>
               ))}
             </SelectField>
           )}
@@ -1581,69 +1613,78 @@ const Products = () => {
             <p className="text-xs text-orange-400 mb-3 font-medium">
               * Note: The first image in this list will be used as the main cover/front image for the design in catalogs.
             </p>
-            <input
-              type="file"
-              multiple
-              accept="image/*"
-              onChange={handleFileChange}
-              className="w-full rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-600 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 mb-3"
-            />
+            <div className="relative">
+              <input
+                type="file"
+                multiple
+                accept="image/*"
+                onChange={handleFileChange}
+                disabled={isCompressing}
+                className="w-full rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-600 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 mb-3 disabled:opacity-50 disabled:cursor-not-allowed"
+              />
+              {isCompressing && (
+                <div className="absolute inset-y-0 right-4 flex items-center justify-center top-0 bottom-3">
+                  <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
+                  <span className="text-xs text-blue-600 ml-2 font-medium">Compressing...</span>
+                </div>
+              )}
+            </div>
 
             {productImages.length > 0 && (
-              <div className="space-y-2.5 max-h-60 overflow-y-auto pr-1 border border-slate-100 rounded-xl p-2 bg-slate-50/50">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 max-h-[500px] overflow-y-auto p-1">
                 {productImages.map((img, idx) => (
-                  <div key={img.type === 'existing' ? `existing-${img.data.id}` : `new-${idx}`} className="flex items-center gap-3 p-2 bg-white border border-slate-200 rounded-lg shadow-2xs">
-                    <img
-                      src={img.type === 'existing' ? `http://localhost:5000${img.data.url}` : img.data.previewUrl}
-                      alt={`Image ${idx}`}
-                      className="h-12 w-12 object-cover rounded-md border border-slate-200 shrink-0"
-                    />
-                    <div className="flex-1 grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Color</label>
-                        <input
-                          type="text"
-                          placeholder="e.g. Red"
-                          value={img.data.color || ''}
-                          onChange={(e) => handleImageMetaChange(idx, 'color', e.target.value)}
-                          className="w-full text-xs border border-slate-200 rounded-md px-2 py-1 outline-none focus:ring-1 focus:ring-blue-500"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Quantity</label>
-                        <input
-                          type="number"
-                          placeholder="0"
-                          value={img.data.quantity || 0}
-                          onChange={(e) => handleImageMetaChange(idx, 'quantity', e.target.value)}
-                          className="w-full text-xs border border-slate-200 rounded-md px-2 py-1 outline-none focus:ring-1 focus:ring-blue-500"
-                        />
-                      </div>
-                    </div>
-                    <div className="flex flex-col items-center justify-center shrink-0 pl-1">
-                      {idx === 0 && (
-                        <span className="text-[9px] bg-blue-50 text-blue-700 border border-blue-100 font-extrabold px-1.5 py-0.5 rounded mb-1 whitespace-nowrap" title="First image is used as the cover photo">
-                          Front Image
-                        </span>
-                      )}
-                      {idx !== 0 && (
-                        <button
-                          type="button"
-                          onClick={() => makePrimaryImage(idx)}
-                          className="text-[9px] bg-white text-slate-500 hover:text-blue-600 border border-slate-200 hover:border-blue-200 font-semibold px-1.5 py-0.5 rounded mb-1 whitespace-nowrap cursor-pointer transition-colors"
-                          title="Set as front image"
-                        >
-                          Make Front
-                        </button>
-                      )}
+                  <div key={img.type === 'existing' ? `existing-${img.data.id}` : `new-${idx}`} className="flex flex-col gap-2">
+                    <div className="relative border border-slate-200 rounded-lg overflow-hidden bg-slate-50 group shadow-sm hover:shadow-md transition-shadow">
+                      <img
+                        src={img.type === 'existing' ? `${import.meta.env.VITE_API_URL || "http://localhost:5000"}${img.data.url}` : img.data.previewUrl}
+                        alt={`Image ${idx}`}
+                        className="w-full aspect-[3/4] object-cover"
+                      />
+
                       <button
                         type="button"
                         onClick={() => handleRemoveImage(idx)}
-                        className="text-red-500 hover:text-red-700 p-1 hover:bg-red-50 rounded-full transition-colors cursor-pointer"
+                        className="absolute top-2 right-2 bg-white rounded-full p-1 text-red-500 shadow-sm border border-slate-100 z-10 hover:bg-red-50 cursor-pointer"
                         title="Remove Image"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <X className="h-3.5 w-3.5" />
                       </button>
+
+                      {idx !== 0 && (
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <button
+                            type="button"
+                            onClick={() => makePrimaryImage(idx)}
+                            className="text-xs bg-white text-slate-700 hover:text-blue-600 font-bold px-3 py-1.5 rounded-full shadow-sm cursor-pointer transition-colors"
+                          >
+                            Set as Front
+                          </button>
+                        </div>
+                      )}
+
+                      {idx === 0 && (
+                        <div className="absolute bottom-0 inset-x-0 bg-slate-600 text-white text-[11px] font-semibold text-center py-1.5 uppercase tracking-wider border-t border-slate-500">
+                          FRONT
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex border border-slate-200 rounded-lg overflow-hidden bg-white shadow-xs">
+                      <input
+                        type="number"
+                        placeholder="Qty"
+                        min="0"
+                        value={img.data.quantity === 0 ? '' : img.data.quantity}
+                        onChange={(e) => handleImageMetaChange(idx, 'quantity', e.target.value)}
+                        className="w-12 text-center text-sm p-2 outline-none border-r border-slate-200 text-slate-700 focus:bg-slate-50"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Color"
+                        value={img.data.color || ''}
+                        onChange={(e) => handleImageMetaChange(idx, 'color', e.target.value)}
+                        className="w-full flex-1 text-sm p-2 pl-3 outline-none text-slate-700 focus:bg-slate-50"
+                      />
                     </div>
                   </div>
                 ))}
@@ -1706,8 +1747,8 @@ const Products = () => {
                   {activeImage ? (
                     <div className="relative rounded-2xl overflow-hidden border border-slate-200/80 bg-slate-50 aspect-[3/4] group shadow-inner">
                       <img
-                        src={`http://localhost:5000${activeImage.url}`}
-                        alt={`${product.name} - ${activeImage.color || 'Variant'}`}
+                        src={`${import.meta.env.VITE_API_URL || "http://localhost:5000"}${activeImage.url}`}
+                        alt={`${product.name?.toUpperCase()} - ${activeImage.color || 'Variant'}`}
                         className="h-full w-full object-cover transition-all duration-500 group-hover:scale-[1.02]"
                       />
 
@@ -1749,7 +1790,7 @@ const Products = () => {
                               }`}
                           >
                             <img
-                              src={`http://localhost:5000${img.url}`}
+                              src={`${import.meta.env.VITE_API_URL || "http://localhost:5000"}${img.url}`}
                               alt={img.color || 'variant'}
                               className="w-full h-full object-cover"
                             />
@@ -1767,7 +1808,7 @@ const Products = () => {
                     <div>
                       <div className="flex flex-wrap items-center gap-2 mb-1.5">
                         <span className="text-[9px] bg-secondary/10 text-secondary border border-secondary/20 px-2.5 py-0.5 rounded font-semibold tracking-widest uppercase">
-                          {product.product_code}
+                          {product.product_code?.toUpperCase()}
                         </span>
                         {product.supplier?.name && (
                           <span className="text-[9px] bg-slate-100 text-slate-500 border border-slate-200 px-2 py-0.5 rounded font-bold uppercase tracking-wider">
@@ -1776,7 +1817,7 @@ const Products = () => {
                         )}
                       </div>
                       <h3 className="text-3xl font-semibold text-navy-dark">
-                        {product.name}
+                        {product.name?.toUpperCase()}
                       </h3>
                     </div>
 

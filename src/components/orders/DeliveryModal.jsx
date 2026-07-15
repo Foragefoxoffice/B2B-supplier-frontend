@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X, Package } from 'lucide-react';
+import imageCompression from 'browser-image-compression';
 
 const DeliveryModal = ({ isOpen, onClose, onConfirm }) => {
   const [trackingNumber, setTrackingNumber] = useState('');
@@ -7,6 +8,24 @@ const DeliveryModal = ({ isOpen, onClose, onConfirm }) => {
   const [invoiceCopy, setInvoiceCopy] = useState(null);
 
   if (!isOpen) return null;
+
+  const handleFileCompress = async (file) => {
+    if (file && file.type.startsWith('image/')) {
+      const options = {
+        maxSizeMB: 0.15,
+        maxWidthOrHeight: 1280,
+        useWebWorker: true,
+        initialQuality: 0.7
+      };
+      try {
+        return await imageCompression(file, options);
+      } catch (error) {
+        console.error('Error compressing image:', error);
+        return file;
+      }
+    }
+    return file;
+  };
 
   const handleConfirm = () => {
     onConfirm({ trackingNumber, bookingCopy, invoiceCopy });
@@ -54,7 +73,7 @@ const DeliveryModal = ({ isOpen, onClose, onConfirm }) => {
                 <input
                   type="file"
                   className="hidden"
-                  onChange={(e) => setBookingCopy(e.target.files[0])}
+                  onChange={async (e) => setBookingCopy(await handleFileCompress(e.target.files[0]))}
                   accept=".pdf, image/*"
                 />
               </label>
@@ -72,7 +91,7 @@ const DeliveryModal = ({ isOpen, onClose, onConfirm }) => {
                 <input
                   type="file"
                   className="hidden"
-                  onChange={(e) => setInvoiceCopy(e.target.files[0])}
+                  onChange={async (e) => setInvoiceCopy(await handleFileCompress(e.target.files[0]))}
                   accept=".pdf, image/*"
                 />
               </label>

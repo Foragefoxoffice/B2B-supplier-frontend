@@ -4,7 +4,8 @@ import {
   Users, CheckCircle, Building2, Handshake, ChevronDown,
   MoreVertical, ChevronLeft, ChevronRight, MapPin, Phone,
   ArrowUp, ArrowDown,
-  User2Icon
+  User2Icon,
+  Edit, Trash2
 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
@@ -237,7 +238,7 @@ const Suppliers = () => {
         <div className="flex gap-3">
           <button
             onClick={handleAddSupplier}
-            className="flex items-center px-4 py-2 bg-[#2563EB] text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-semibold shadow-sm cursor-pointer"
+            className="flex items-center px-4 py-2 bg-active-btn text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium shadow-sm cursor-pointer"
           >
             <Plus className="h-4 w-4 mr-2" />
             Add Supplier
@@ -298,68 +299,51 @@ const Suppliers = () => {
           <div className="flex-1"></div>
 
           {/* Filters */}
-          <div className="flex flex-wrap gap-3 w-full md:w-auto items-center">
+          <div className="flex flex-col md:flex-row gap-3 w-full md:w-auto items-stretch md:items-center">
             <SelectField
               value={status}
               onChange={(e) => { setStatus(e.target.value); setPage(1); }}
-              className="rounded-xl pl-4 py-2.5 text-sm font-semibold cursor-pointer min-w-[110px]"
-              wrapperClassName="w-auto"
+              className="rounded-xl pl-4 py-2.5 text-sm font-semibold cursor-pointer min-w-[140px]"
+              wrapperClassName="md:w-[160px]"
             >
               <option value="">All Status</option>
               <option value="ACTIVE">Active</option>
               <option value="INACTIVE">Inactive</option>
               <option value="PENDING">Pending</option>
             </SelectField>
-            <SelectField
-              value={city}
-              onChange={(e) => { setCity(e.target.value); setPage(1); }}
-              className="rounded-xl pl-4 py-2.5 text-sm font-semibold cursor-pointer min-w-[110px]"
-              wrapperClassName="w-auto"
-            >
-              <option value="">All Cities</option>
-              <option value="Coimbatore">Coimbatore</option>
-              <option value="Salem">Salem</option>
-              <option value="Tiruppur">Tiruppur</option>
-              <option value="Erode">Erode</option>
-              <option value="Madurai">Madurai</option>
-            </SelectField>
-            <button className="flex items-center px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition-colors text-sm font-semibold">
-              <Filter className="h-4 w-4 mr-2 text-slate-400" />
-              Filter
-            </button>
           </div>
         </div>
 
         {/* Table */}
-        <div className="w-full overflow-visible">
+        <div className="w-full overflow-x-auto">
           <table className="min-w-full divide-y divide-slate-100">
             <thead className="bg-white">
               <tr>
-                <th scope="col" className="px-6 py-4 text-left text-[14px] font-semibold text-slate-800 w-10">
+                <th scope="col" className="px-6 py-4 text-left text-[14px] font-semibold text-slate-800 w-10 min-w-[60px]">
                   <input type="checkbox" className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 h-4 w-4" />
                 </th>
-                <th scope="col" className="px-6 py-4 text-left text-[14px] font-semibold text-slate-800">
+                <th scope="col" className="px-6 py-4 text-left text-[14px] font-semibold text-slate-800 min-w-[200px]">
                   <div className="flex items-center cursor-pointer">
                     Supplier
                     <ChevronDown className="h-3 w-3 ml-1 text-slate-400" />
                   </div>
                 </th>
-                <th scope="col" className="px-6 py-4 text-left text-[14px] font-semibold text-slate-800">
+                <th scope="col" className="px-6 py-4 text-left text-[14px] font-semibold text-slate-800 min-w-[180px]">
                   Contact Person
                 </th>
-                <th scope="col" className="px-6 py-4 text-left text-[14px] font-semibold text-slate-800">
+                <th scope="col" className="px-6 py-4 text-left text-[14px] font-semibold text-slate-800 min-w-[160px]">
                   Phone
                 </th>
-                <th scope="col" className="px-6 py-4 text-left text-[14px] font-semibold text-slate-800">
+                <th scope="col" className="px-6 py-4 text-left text-[14px] font-semibold text-slate-800 min-w-[140px]">
                   City
                 </th>
-                <th scope="col" className="px-6 py-4 text-left text-[14px] font-semibold text-slate-800">
+                <th scope="col" className="px-6 py-4 text-left text-[14px] font-semibold text-slate-800 min-w-[130px]">
                   Status
                 </th>
-                <th scope="col" className="px-6 py-4 text-left text-[14px] font-semibold text-slate-800">
+                <th scope="col" className="px-6 py-4 text-left text-[14px] font-semibold text-slate-800 min-w-[140px]">
                   Last Order
                 </th>
-                <th scope="col" className="px-6 py-4 text-right text-[14px] font-semibold text-slate-800">
+                <th scope="col" className="px-6 py-4 text-right text-[14px] font-semibold text-slate-800 min-w-[120px]">
                   Actions
                 </th>
               </tr>
@@ -377,7 +361,7 @@ const Suppliers = () => {
                 suppliers.map((supplier, idx) => (
                   <tr
                     key={supplier.id || idx}
-                    className={`hover:bg-slate-50/80 transition-colors group relative ${openDropdownId === supplier.id ? 'z-50' : ''} hover:z-40`}
+                    className={`hover:bg-slate-50/80 transition-colors group relative`}
                   >
                     <td className="px-6 py-5 whitespace-nowrap">
                       <input type="checkbox" className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 h-4 w-4" />
@@ -388,7 +372,7 @@ const Suppliers = () => {
                           {supplier.initials}
                         </div>
                         <div className="ml-4">
-                          <div className="text-[14px] font-semibold text-slate-900">{supplier.name}</div>
+                          <div className="text-[14px] font-semibold text-slate-900">{supplier.name?.toUpperCase()}</div>
                           <div className="text-[13px] font-medium text-slate-500 mt-0.5">GSTIN: {supplier.gstin}</div>
                         </div>
                       </div>
@@ -422,32 +406,21 @@ const Suppliers = () => {
                       {supplier.lastOrder}
                     </td>
                     <td className="px-6 py-5 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="relative inline-block text-left">
+                      <div className="flex justify-end gap-3">
                         <button
-                          onClick={() => setOpenDropdownId(openDropdownId === supplier.id ? null : supplier.id)}
-                          className="text-slate-400 hover:text-slate-700 transition-colors p-1 rounded-full hover:bg-slate-100 cursor-pointer"
+                          onClick={() => handleEdit(supplier)}
+                          className="text-blue-500 hover:text-blue-700 transition-colors p-1.5 rounded-lg hover:bg-blue-50 cursor-pointer"
+                          title="Edit"
                         >
-                          <MoreVertical className="h-5 w-5" />
+                          <Edit className="h-[18px] w-[18px]" />
                         </button>
-                        {openDropdownId === supplier.id && (
-                          <div className="absolute right-8 top-0 mt-1 w-32 bg-white rounded-xl shadow-lg border border-slate-100 py-1 z-[9999] flex flex-col">
-                            <button
-                              onClick={() => handleEdit(supplier)}
-                              className="block w-full text-left px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 hover:text-[#2563EB] transition-colors cursor-pointer"
-                            >
-                              Edit
-                            </button>
-                            <button
-                              onClick={() => {
-                                setOpenDropdownId(null);
-                                handleDelete(supplier.id);
-                              }}
-                              className="block w-full text-left px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        )}
+                        <button
+                          onClick={() => handleDelete(supplier.id)}
+                          className="text-red-500 hover:text-red-700 transition-colors p-1.5 rounded-lg hover:bg-red-50 cursor-pointer"
+                          title="Delete"
+                        >
+                          <Trash2 className="h-[18px] w-[18px]" />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -540,7 +513,8 @@ const Suppliers = () => {
               <label className="block text-sm font-medium text-slate-700 mb-1">Company Name / Name <span className='text-red-500'>*</span></label>
               <input
                 {...register('name', { required: true })}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-600 font-medium"
+                onInput={(e) => e.target.value = e.target.value.toUpperCase()}
+                className="w-full border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-600 font-medium uppercase"
                 placeholder="Acme Corp"
               />
               {errors.name && <span className="text-red-500 text-xs">Name is required</span>}

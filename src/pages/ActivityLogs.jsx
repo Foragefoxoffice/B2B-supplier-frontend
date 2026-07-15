@@ -59,7 +59,7 @@ const ActivityLogs = () => {
     <div className="h-full flex flex-col p-0 animate-fade-in relative z-10">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
         <div>
-          <h1 className="text-3xl font-semibold text-slate-800 tracking-tight flex items-center">
+          <h1 className="text-2xl font-semibold text-slate-800 tracking-tight flex items-center">
             <Activity className="mr-3 h-8 w-8 text-blue-600" />
             Activity Logs
           </h1>
