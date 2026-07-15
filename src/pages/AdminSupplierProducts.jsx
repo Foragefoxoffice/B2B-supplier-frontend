@@ -347,6 +347,17 @@ const AdminSupplierProducts = () => {
     });
   };
 
+  const formatPrice = (val) => {
+    if (val === null || val === undefined) return '';
+    let strVal = String(val).replace(/[^0-9.]/g, '');
+    if (!strVal) return '';
+    const parts = strVal.split('.');
+    if (parts[0]) {
+      parts[0] = parseInt(parts[0], 10).toLocaleString('en-IN');
+    }
+    return parts.join('.');
+  };
+
   const handleEditClick = (product) => {
     setEditingProduct(product);
     setProductImages((product.images || []).map(img => ({ type: 'existing', data: img })));
@@ -354,7 +365,7 @@ const AdminSupplierProducts = () => {
       name: product.name,
       product_code: product.product_code || '',
       description: product.description || '',
-      price: product.price,
+      price: formatPrice(product.price),
       moq: product.moq || 1,
       unit: product.unit || 'pcs',
       category_id: product.category_id,
@@ -558,7 +569,7 @@ const AdminSupplierProducts = () => {
       formData.append('product_code', data.product_code || '');
       formData.append('name', data.name);
       formData.append('description', data.description || '');
-      formData.append('price', data.price);
+      formData.append('price', String(data.price).replace(/,/g, ''));
       formData.append('moq', data.moq || 1);
       formData.append('unit', data.unit || 'pcs');
       formData.append('gst', data.gst || '');
@@ -584,7 +595,7 @@ const AdminSupplierProducts = () => {
             isNew: false
           });
         } else {
-          formData.append('images', img.data.file);
+          formData.append('images', img.data.file, img.data.file.name || `image-${fileIndexCounter}.jpg`);
           metadata.push({
             isNew: true,
             fileIndex: fileIndexCounter++,

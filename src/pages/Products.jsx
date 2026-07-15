@@ -321,6 +321,17 @@ const Products = () => {
     });
   };
 
+  const formatPrice = (val) => {
+    if (val === null || val === undefined) return '';
+    let strVal = String(val).replace(/[^0-9.]/g, '');
+    if (!strVal) return '';
+    const parts = strVal.split('.');
+    if (parts[0]) {
+      parts[0] = parseInt(parts[0], 10).toLocaleString('en-IN');
+    }
+    return parts.join('.');
+  };
+
   const handleEditClick = (product) => {
     setEditingProduct(product);
     setProductImages((product.images || []).map(img => ({ type: 'existing', data: img })));
@@ -328,7 +339,7 @@ const Products = () => {
       name: product.name,
       product_code: product.product_code || '',
       description: product.description || '',
-      price: product.price,
+      price: formatPrice(product.price),
       moq: product.moq || 1,
       unit: product.unit || 'pcs',
       category_id: product.category_id,
@@ -532,7 +543,7 @@ const Products = () => {
       formData.append('product_code', data.product_code || '');
       formData.append('name', data.name);
       formData.append('description', data.description || '');
-      formData.append('price', data.price);
+      formData.append('price', String(data.price).replace(/,/g, ''));
       formData.append('moq', data.moq || 1);
       formData.append('unit', data.unit || 'pcs');
       formData.append('gst', data.gst || '');
@@ -558,7 +569,7 @@ const Products = () => {
             isNew: false
           });
         } else {
-          formData.append('images', img.data.file);
+          formData.append('images', img.data.file, img.data.file.name || `image-${fileIndexCounter}.jpg`);
           metadata.push({
             isNew: true,
             fileIndex: fileIndexCounter++,
@@ -1554,11 +1565,22 @@ const Products = () => {
             <div>
               <label className="block text-sm flex items-center font-semibold text-slate-700 mb-1">Rate (₹)  <span className="text-red-500 ml-2">*Exclusive GST Rate</span></label>
               <input
-                type="number"
-                step="0.01"
-                {...register('price', { required: true })}
+                type="text"
+                {...register('price', { 
+                  required: true,
+                  onChange: (e) => {
+                    let val = e.target.value.replace(/[^0-9.]/g, '');
+                    if (val) {
+                      const parts = val.split('.');
+                      if (parts[0]) {
+                        parts[0] = parseInt(parts[0], 10).toLocaleString('en-IN');
+                      }
+                      e.target.value = parts.join('.');
+                    }
+                  }
+                })}
                 className="w-full border border-slate-200 rounded-xl px-3 py-3 outline-none focus:ring-2 focus:ring-blue-600 text-sm bg-slate-50/50 hover:bg-slate-100/20 transition-all"
-                placeholder="e.g. 7000"
+                placeholder="e.g. 7,000"
               />
               {errors.price && <span className="text-red-500 text-xs">Rate is required</span>}
             </div>
