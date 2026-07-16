@@ -6,7 +6,7 @@ import ConfirmModal from '../components/common/ConfirmModal';
 import { getCategoriesApi, createCategoryApi, updateCategoryApi, deleteCategoryApi } from '../commonApi/api';
 import Modal from '../components/ui/Modal';
 import { TableSkeleton } from '../components/common/SkeletonLoader';
-import SelectField from '../components/common/SelectField';
+import Pagination from '../components/common/Pagination';
 
 const Categories = () => {
   const [categories, setCategories] = useState([]);
@@ -189,65 +189,17 @@ const Categories = () => {
         </div>
 
         {!loading && totalItems > 0 && (
-          <div className="flex flex-col sm:flex-row justify-between items-center px-6 py-4 border-t border-slate-100 gap-4 bg-slate-50/20 text-sm">
-            <div className="text-slate-500 font-medium flex flex-wrap items-center gap-2">
-              <span>Showing <span className="text-slate-800 font-bold">{startIndex + 1}</span> to{' '}
-                <span className="text-slate-800 font-bold">{Math.min(startIndex + itemsPerPage, totalItems)}</span> of{' '}
-                <span className="text-slate-800 font-bold">{totalItems}</span> categories</span>
-              <span className="text-slate-300">|</span>
-              <div className="flex items-center gap-2">
-                <span className="text-slate-400 font-semibold text-xs uppercase tracking-wider">Show:</span>
-                <SelectField
-                  value={itemsPerPage}
-                  onChange={(e) => {
-                    setItemsPerPage(parseInt(e.target.value));
-                    setCurrentPage(1);
-                  }}
-                  className="rounded-lg px-2 py-0.5 text-xs cursor-pointer font-bold text-slate-700"
-                  wrapperClassName="w-auto"
-                >
-                  <option value={5}>5</option>
-                  <option value={10}>10</option>
-                  <option value={25}>25</option>
-                  <option value={50}>50</option>
-                </SelectField>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-1.5">
-              <button
-                disabled={currentPage === 1}
-                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                className="px-3 py-1.5 border border-slate-200 rounded-lg bg-white hover:bg-slate-50 text-xs font-semibold disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer text-slate-600 transition-colors"
-              >
-                Previous
-              </button>
-
-              {Array.from({ length: totalPages }).map((_, idx) => {
-                const pageNum = idx + 1;
-                return (
-                  <button
-                    key={pageNum}
-                    onClick={() => setCurrentPage(pageNum)}
-                    className={`relative inline-flex items-center justify-center h-8 w-8 rounded-lg text-xs font-bold transition-all cursor-pointer ${currentPage === pageNum
-                      ? 'bg-active-btn text-white shadow-sm border-0'
-                      : 'border border-slate-200 bg-white hover:bg-slate-50 text-slate-600'
-                      }`}
-                  >
-                    {pageNum}
-                  </button>
-                );
-              })}
-
-              <button
-                disabled={currentPage === totalPages}
-                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                className="px-3 py-1.5 border border-slate-200 rounded-lg bg-white hover:bg-slate-50 text-xs font-semibold disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer text-slate-600 transition-colors"
-              >
-                Next
-              </button>
-            </div>
-          </div>
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+            itemsPerPage={itemsPerPage}
+            onItemsPerPageChange={(val) => {
+              setItemsPerPage(val);
+              setCurrentPage(1);
+            }}
+            totalItems={totalItems}
+          />
         )}
       </div>
 
@@ -267,8 +219,8 @@ const Categories = () => {
             <label className="block text-sm font-semibold text-slate-700 mb-2">Category Name <span className='text-red-500'>*</span></label>
             <input
               {...register('name', { required: true })}
-                onInput={(e) => e.target.value = e.target.value.toUpperCase()}
-                className="w-full border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 transition-all text-slate-800 text-sm bg-slate-50 hover:bg-slate-100/50 uppercase"
+              onInput={(e) => e.target.value = e.target.value.toUpperCase()}
+              className="w-full border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 transition-all text-slate-800 text-sm bg-slate-50 hover:bg-slate-100/50 uppercase"
               placeholder="e.g. Multi Color Checkd"
             />
             {errors.name && <span className="text-red-500 text-xs mt-1 block">Category Name is required</span>}

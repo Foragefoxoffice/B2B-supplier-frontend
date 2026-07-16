@@ -41,9 +41,26 @@ const StatCard = ({ title, value, icon: Icon, colorClass, bgColorClass, trend, t
   const isPositive = trend === 'up';
   return (
     <div className="bg-white rounded-2xl shadow-xs border border-slate-100 p-5 flex flex-col relative">
-      <button className="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
-        <MoreVertical className="h-4 w-4" />
-      </button>
+      <div className="absolute top-4 right-4 group z-20">
+        <button className="text-slate-400 group-hover:text-slate-700 group-hover:bg-slate-50 p-1 -m-1 rounded-md transition-colors cursor-pointer" aria-label="More options">
+          <MoreVertical className="h-4 w-4" />
+        </button>
+        {/* Invisible bridge to keep hover active */}
+        <div className="absolute top-full right-0 w-10 h-2"></div>
+        {/* Interactive Dropdown Menu */}
+        <div className="absolute top-full right-0 mt-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 w-32 bg-white border border-slate-100 rounded-xl shadow-lg shadow-slate-200/50 py-1.5 z-30 transform origin-top-right scale-95 group-hover:scale-100">
+          <button className="w-full text-left px-3.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 hover:text-indigo-600 transition-colors cursor-pointer flex items-center">
+            View Details
+          </button>
+          <button className="w-full text-left px-3.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 hover:text-indigo-600 transition-colors cursor-pointer flex items-center">
+            Refresh Data
+          </button>
+          <div className="h-px bg-slate-100 my-1 mx-2"></div>
+          <button className="w-full text-left px-3.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-red-50 hover:text-red-600 transition-colors cursor-pointer flex items-center">
+            Hide Card
+          </button>
+        </div>
+      </div>
       <div className="flex items-center mb-4">
         <div className={`h-12 w-12 rounded-xl flex items-center justify-center mr-4 ${bgColorClass} ${colorClass}`}>
           <Icon className="h-6 w-6" />
@@ -542,10 +559,61 @@ const AdminDashboard = () => {
     }
   };
 
+  const calculateTrend = (data, filterFn = () => true) => {
+    if (!data || data.length === 0) return { trend: 'up', value: '0%' };
+
+    const validDates = data
+      .map(item => new Date(item.created_at || item.createdAt || item.date).getTime())
+      .filter(t => !isNaN(t));
+      
+    if (validDates.length === 0) return { trend: 'up', value: '0%' };
+    
+    const latestDate = new Date(Math.max(...validDates));
+    
+    const now = latestDate;
+    const oneWeekAgo = new Date(now);
+    oneWeekAgo.setDate(now.getDate() - 7);
+    
+    const twoWeeksAgo = new Date(oneWeekAgo);
+    twoWeeksAgo.setDate(oneWeekAgo.getDate() - 7);
+
+    let thisWeekCount = 0;
+    let lastWeekCount = 0;
+
+    data.forEach(item => {
+      if (!filterFn(item)) return;
+      const itemDate = new Date(item.created_at || item.createdAt || item.date);
+      if (isNaN(itemDate.getTime())) return;
+      
+      if (itemDate > oneWeekAgo && itemDate <= now) {
+        thisWeekCount++;
+      } else if (itemDate > twoWeeksAgo && itemDate <= oneWeekAgo) {
+        lastWeekCount++;
+      }
+    });
+
+    if (lastWeekCount === 0) {
+      if (thisWeekCount === 0) return { trend: 'up', value: '0%' };
+      return { trend: 'up', value: '100%' };
+    }
+
+    const percentageChange = ((thisWeekCount - lastWeekCount) / lastWeekCount) * 100;
+    
+    return {
+      trend: percentageChange >= 0 ? 'up' : 'down',
+      value: `${Math.abs(percentageChange).toFixed(1)}%`
+    };
+  };
+
   // Derived dashboard stats
   const activeOrdersCount = orders.filter(o => o.status !== 'DELIVERED' && o.status !== 'COMPLETED' && o.status !== 'REJECTED' && o.status !== 'DRAFT').length;
   const pendingOrdersCount = orders.filter(o => o.status === 'SENT' || o.status === 'PENDING').length;
   const completedOrdersCount = orders.filter(o => o.status === 'DELIVERED' || o.status === 'COMPLETED').length;
+
+  const suppliersTrend = calculateTrend(suppliers);
+  const activeOrdersTrend = calculateTrend(orders, o => o.status !== 'DELIVERED' && o.status !== 'COMPLETED' && o.status !== 'REJECTED' && o.status !== 'DRAFT');
+  const pendingOrdersTrend = calculateTrend(orders, o => o.status === 'SENT' || o.status === 'PENDING');
+  const completedOrdersTrend = calculateTrend(orders, o => o.status === 'DELIVERED' || o.status === 'COMPLETED');
 
   const pendingProductsCount = stats?.pendingProducts || 0;
   const pendingSuppliersCount = suppliers.filter(s => s.status === 'PENDING').length;
@@ -585,8 +653,8 @@ const AdminDashboard = () => {
               icon={Users}
               colorClass="text-indigo-600"
               bgColorClass="bg-indigo-100"
-              trend="up"
-              trendValue="8.5%"
+              trend={suppliersTrend.trend}
+              trendValue={suppliersTrend.value}
             />
             <StatCard
               title="Active Orders"
@@ -594,8 +662,8 @@ const AdminDashboard = () => {
               icon={ShoppingCart}
               colorClass="text-blue-600"
               bgColorClass="bg-blue-100"
-              trend="up"
-              trendValue="12.4%"
+              trend={activeOrdersTrend.trend}
+              trendValue={activeOrdersTrend.value}
             />
             <StatCard
               title="Pending Orders"
@@ -603,8 +671,8 @@ const AdminDashboard = () => {
               icon={Hourglass}
               colorClass="text-orange-500"
               bgColorClass="bg-orange-100"
-              trend="down"
-              trendValue="5.2%"
+              trend={pendingOrdersTrend.trend}
+              trendValue={pendingOrdersTrend.value}
             />
             <StatCard
               title="Completed Orders"
@@ -612,8 +680,8 @@ const AdminDashboard = () => {
               icon={CheckCircle}
               colorClass="text-emerald-500"
               bgColorClass="bg-emerald-100"
-              trend="up"
-              trendValue="15.3%"
+              trend={completedOrdersTrend.trend}
+              trendValue={completedOrdersTrend.value}
             />
           </div>
 
@@ -624,12 +692,15 @@ const AdminDashboard = () => {
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center">
                   <h3 className="text-lg font-semibold text-slate-800 mr-2">Purchase Orders Overview</h3>
-                  <HelpCircle className="h-4 w-4 text-slate-400" />
+                  <div className="relative group flex items-center">
+                    <HelpCircle className="h-4 w-4 text-slate-400 cursor-help hover:text-slate-600 transition-colors" />
+                    {/* Tooltip */}
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2.5 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10 w-56 p-2.5 bg-slate-800 text-white text-xs rounded-lg shadow-xl font-medium text-center pointer-events-none">
+                      Tracks the volume of purchase orders comparing the current week to the last week.
+                      <div className="absolute top-full left-1/2 -translate-x-1/2 border-x-5 border-x-transparent border-t-5 border-t-slate-800"></div>
+                    </div>
+                  </div>
                 </div>
-                <button className="flex items-center px-3 py-1.5 bg-white border border-slate-200 rounded-md text-xs font-semibold text-slate-700 hover:bg-slate-50">
-                  This Week
-                  <ChevronDown className="h-3 w-3 ml-1" />
-                </button>
               </div>
 
               <div className="flex items-center space-x-6 mb-4">
@@ -652,10 +723,6 @@ const AdminDashboard = () => {
             <div className="bg-white p-5 rounded-2xl shadow-xs border border-slate-100 lg:col-span-1">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-semibold text-slate-800">Order Status Distribution</h3>
-                <button className="flex items-center px-3 py-1.5 bg-white border border-slate-200 rounded-md text-xs font-semibold text-slate-700 hover:bg-slate-50">
-                  This Week
-                  <ChevronDown className="h-3 w-3 ml-1" />
-                </button>
               </div>
 
               <div className="relative h-[200px] w-full mb-6">

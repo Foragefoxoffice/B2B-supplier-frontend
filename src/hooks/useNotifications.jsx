@@ -98,6 +98,7 @@ export const useNotifications = (user, token) => {
   const [socket, setSocket] = useState(null);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [loading, setLoading] = useState(true);
 
   const fetchNotifications = async () => {
     try {
@@ -108,6 +109,8 @@ export const useNotifications = (user, token) => {
       }
     } catch (error) {
       console.error('Failed to fetch notifications:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -201,7 +204,11 @@ export const useNotifications = (user, token) => {
              }
              return prev.filter(n => n.id !== detail.id);
           });
+        } else if (detail.action === 'deleteAll') {
+          setNotifications([]);
+          setUnreadCount(0);
         }
+
       } else {
         fetchNotifications();
       }
@@ -243,6 +250,17 @@ export const useNotifications = (user, token) => {
     }
   };
 
-  return { socket, notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification };
+  const deleteAllNotifications = async () => {
+    window.dispatchEvent(new CustomEvent('notifications_sync', { detail: { action: 'deleteAll' } }));
+
+    try {
+      await api.delete('/notifications/delete-all');
+    } catch (error) {
+      console.error('Error deleting all notifications', error);
+      fetchNotifications();
+    }
+  };
+
+  return { socket, notifications, unreadCount, loading, markAsRead, markAllAsRead, deleteNotification, deleteAllNotifications };
 };
 

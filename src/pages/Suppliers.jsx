@@ -14,6 +14,7 @@ import { getSuppliersApi, createSupplierApi, deleteSupplierApi, updateSupplierAp
 import Modal from '../components/ui/Modal';
 import { TableRowsSkeleton } from '../components/common/SkeletonLoader';
 import SelectField from '../components/common/SelectField';
+import Pagination from '../components/common/Pagination';
 const Suppliers = () => {
   const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -38,7 +39,8 @@ const Suppliers = () => {
     totalSuppliers: 0,
     activeSuppliers: 0,
     newThisMonth: 0,
-    totalPurchase: 0
+    totalPurchase: 0,
+    trends: null
   });
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm();
@@ -195,8 +197,8 @@ const Suppliers = () => {
     {
       title: "Total Suppliers",
       value: dashboardStats.totalSuppliers.toString(),
-      trend: "8.5%",
-      trendUp: true,
+      trend: dashboardStats.trends?.totalSuppliers?.value || "0%",
+      trendUp: (dashboardStats.trends?.totalSuppliers?.trend || 'up') === 'up',
       icon: <Users className="h-5 w-5 text-blue-600" />,
       bg: "bg-blue-50",
       graph: true
@@ -204,24 +206,24 @@ const Suppliers = () => {
     {
       title: "Active Suppliers",
       value: dashboardStats.activeSuppliers.toString(),
-      trend: "12.4%",
-      trendUp: true,
+      trend: dashboardStats.trends?.activeSuppliers?.value || "0%",
+      trendUp: (dashboardStats.trends?.activeSuppliers?.trend || 'up') === 'up',
       icon: <CheckCircle className="h-5 w-5 text-emerald-600" />,
       bg: "bg-emerald-50"
     },
     {
       title: "New This Month",
       value: dashboardStats.newThisMonth.toString(),
-      trend: "4.2%",
-      trendUp: true,
+      trend: dashboardStats.trends?.newThisMonth?.value || "0%",
+      trendUp: (dashboardStats.trends?.newThisMonth?.trend || 'up') === 'up',
       icon: <Building2 className="h-5 w-5 text-purple-600" />,
       bg: "bg-purple-50"
     },
     {
       title: "Total Purchase",
       value: `₹ ${formatLakhs(dashboardStats.totalPurchase)}L`,
-      trend: "3.1%",
-      trendUp: false,
+      trend: dashboardStats.trends?.totalPurchase?.value || "0%",
+      trendUp: (dashboardStats.trends?.totalPurchase?.trend || 'up') === 'up',
       icon: <Handshake className="h-5 w-5 text-orange-600" />,
       bg: "bg-orange-50"
     }
@@ -430,65 +432,17 @@ const Suppliers = () => {
           </table>
         </div>
 
-        <div className="bg-white px-6 py-4 border-t border-slate-100 flex items-center justify-between rounded-b-2xl relative">
-          <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-            <div>
-              <p className="text-[14px] font-medium text-slate-500">
-                Showing <span className="font-bold text-slate-700">{totalCount === 0 ? 0 : (page - 1) * limit + 1}</span> to <span className="font-bold text-slate-700">{Math.min(page * limit, totalCount)}</span> of <span className="font-bold text-slate-700">{totalCount}</span> results
-              </p>
-            </div>
-            <div>
-              <nav className="relative z-0 inline-flex rounded-md gap-1.5" aria-label="Pagination">
-                <button
-                  onClick={() => setPage(p => Math.max(1, p - 1))}
-                  disabled={page === 1}
-                  className="relative inline-flex items-center justify-center h-8 w-8 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-500 hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </button>
-
-                {[...Array(totalPages)].map((_, i) => {
-                  if (
-                    totalPages <= 5 ||
-                    i === 0 ||
-                    i === totalPages - 1 ||
-                    (i >= page - 2 && i <= page)
-                  ) {
-                    return (
-                      <button
-                        key={i}
-                        onClick={() => setPage(i + 1)}
-                        className={`relative inline-flex items-center justify-center h-8 w-8 rounded-lg text-sm font-bold transition-colors shadow-sm cursor-pointer ${page === i + 1
-                          ? 'bg-[#2563EB] text-white border-transparent'
-                          : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
-                          }`}
-                      >
-                        {i + 1}
-                      </button>
-                    );
-                  }
-
-                  if (i === 1 && page > 3) {
-                    return <span key={i} className="relative inline-flex items-center justify-center h-8 w-8 text-sm font-bold text-slate-400">...</span>;
-                  }
-                  if (i === totalPages - 2 && page < totalPages - 2) {
-                    return <span key={i} className="relative inline-flex items-center justify-center h-8 w-8 text-sm font-bold text-slate-400">...</span>;
-                  }
-
-                  return null;
-                })}
-
-                <button
-                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                  disabled={page === totalPages || totalPages === 0}
-                  className="relative inline-flex items-center justify-center h-8 w-8 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-500 hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </button>
-              </nav>
-            </div>
-          </div>
-        </div>
+        <Pagination
+          currentPage={page}
+          totalPages={totalPages}
+          onPageChange={setPage}
+          itemsPerPage={limit}
+          onItemsPerPageChange={(val) => {
+            setLimit(val);
+            setPage(1);
+          }}
+          totalItems={totalCount}
+        />
       </div>
 
       <ConfirmModal

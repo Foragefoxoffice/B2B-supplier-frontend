@@ -17,6 +17,7 @@ import imageCompression from 'browser-image-compression';
 import namer from 'color-namer';
 import { TableSkeleton } from '../components/common/SkeletonLoader';
 import SelectField from '../components/common/SelectField';
+import Pagination from '../components/common/Pagination';
 
 const resolveSingleColor = (colorName) => {
   if (!colorName) return '#CBD5E1';
@@ -438,7 +439,65 @@ const Products = () => {
       }
     });
 
-    setStats({ total, active, outOfStock, lowStock, draft });
+    const calculateTrend = (data, filterFn = () => true) => {
+      if (!data || data.length === 0) return { trend: 'up', value: '0%' };
+
+      const now = new Date();
+      const oneMonthAgo = new Date(now);
+      oneMonthAgo.setMonth(now.getMonth() - 1);
+
+      const twoMonthsAgo = new Date(oneMonthAgo);
+      twoMonthsAgo.setMonth(oneMonthAgo.getMonth() - 1);
+
+      let thisPeriodCount = 0; let lastPeriodCount = 0;
+      data.forEach(item => {
+        if (!filterFn(item)) return;
+        const itemDate = new Date(item.created_at);
+        if (isNaN(itemDate.getTime())) return;
+
+        if (itemDate > oneMonthAgo && itemDate <= now) {
+          thisPeriodCount++;
+        } else if (itemDate > twoMonthsAgo && itemDate <= oneMonthAgo) {
+          lastPeriodCount++;
+        }
+      });
+
+      if (lastPeriodCount === 0) {
+        if (thisPeriodCount === 0) return { trend: 'up', value: '0%' };
+        return { trend: 'up', value: '100%' };
+      }
+
+      const percentageChange = ((thisPeriodCount - lastPeriodCount) / lastPeriodCount) * 100;
+      return {
+        trend: percentageChange >= 0 ? 'up' : 'down',
+        value: `${Math.abs(percentageChange).toFixed(1)}%`
+      };
+    };
+
+    setStats({
+      total,
+      active,
+      outOfStock,
+      lowStock,
+      draft,
+      trends: {
+        total: calculateTrend(allProducts),
+        active: calculateTrend(allProducts, p => p.status === 'APPROVED'),
+        draft: calculateTrend(allProducts, p => p.status === 'PENDING'),
+        outOfStock: calculateTrend(allProducts, p => {
+          const totalStock = p.images && p.images.length > 0
+            ? p.images.reduce((sum, img) => sum + (img.quantity || 0), 0)
+            : 0;
+          return totalStock === 0;
+        }),
+        lowStock: calculateTrend(allProducts, p => {
+          const totalStock = p.images && p.images.length > 0
+            ? p.images.reduce((sum, img) => sum + (img.quantity || 0), 0)
+            : 0;
+          return totalStock > 0 && totalStock <= 10;
+        })
+      }
+    });
   }, [allProducts]);
 
   const filteredProducts = allProducts.filter(product => {
@@ -615,56 +674,6 @@ const Products = () => {
     setVariantQuantities(prev => ({ ...prev, [variantId]: val }));
   };
 
-  const handlePlaceBatchOrder = async (product, ordersArray, customRemarks = '') => {
-    if (!ordersArray || ordersArray.length === 0) {
-      toast.error('No items selected for ordering.');
-      return;
-    }
-
-    try {
-      setIsSubmitting(true);
-      setBatchOrderingState({ active: true, currentStep: 0, totalSteps: ordersArray.length });
-
-      let successCount = 0;
-
-      for (let i = 0; i < ordersArray.length; i++) {
-        const item = ordersArray[i];
-        const payload = {
-          product_id: product.id,
-          variant_id: item.variant.id,
-          quantity: item.quantity,
-          rate: product.price,
-          remarks: `Color: ${item.variant.color || 'Default'}${customRemarks ? ` | Notes: ${customRemarks}` : ''}`
-        };
-
-        setBatchOrderingState(prev => ({ ...prev, currentStep: i + 1 }));
-
-        const data = await createOrderApi(payload);
-        if (data.success) {
-          successCount++;
-        }
-      }
-
-      if (successCount > 0) {
-        if (product.status === 'PENDING') {
-          await approveProductApi(product.id, 'APPROVED');
-        }
-        toast.success(`Successfully placed ${successCount} purchase orders for ${product.name?.toUpperCase()}!`);
-        setVariantQuantities({});
-        fetchProducts();
-      } else {
-        toast.error('Failed to place orders.');
-      }
-    } catch (error) {
-      console.error('Error placing batch orders:', error);
-      toast.error('Failed to place purchase orders.');
-    } finally {
-      setIsSubmitting(false);
-      setBatchOrderingState({ active: false, currentStep: 0, totalSteps: 0 });
-    }
-  };
-
-
 
   const handleDelete = (id) => {
     setDeleteProductId(id);
@@ -685,16 +694,6 @@ const Products = () => {
     }
   };
 
-  const handleApprove = async (id, status) => {
-    try {
-      await approveProductApi(id, status);
-      toast.success(`Product ${status === 'APPROVED' ? 'approved' : 'rejected'} successfully!`);
-      fetchProducts();
-    } catch (error) {
-      console.error('Error updating product status:', error);
-      toast.error('Failed to update product status.');
-    }
-  };
 
   return (
     <div className="space-y-6">
@@ -757,10 +756,10 @@ const Products = () => {
                   <span className="text-2xl font-semibold text-slate-800">{stats.total}</span>
                 </div>
               </div>
-              <div className="mt-4 pt-3 border-t border-slate-50 flex items-center gap-1.5 text-xs text-emerald-600 font-semibold">
-                <ArrowUpRight className="w-3.5 h-3.5" />
-                <span>+24.5%</span>
-                <span className="text-slate-400 font-normal">vs last month</span>
+              <div className={`mt-4 pt-3 border-t border-slate-50 flex items-center gap-1.5 text-xs font-semibold ${stats.trends?.total?.value === '0%' ? 'text-slate-500' : stats.trends?.total?.trend === 'up' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                {stats.trends?.total?.value === '0%' ? <span>—</span> : stats.trends?.total?.trend === 'up' ? <ArrowUpRight className="w-3.5 h-3.5" /> : <ArrowDownRight className="w-3.5 h-3.5" />}
+                <span>{stats.trends?.total?.value === '0%' ? '' : '+'}{stats.trends?.total?.value === '0%' ? '' : stats.trends?.total?.value}</span>
+                <span className="text-slate-400 font-normal ml-1">{stats.trends?.total?.value === '0%' ? 'No change' : 'vs last month'}</span>
               </div>
             </div>
 
@@ -775,10 +774,10 @@ const Products = () => {
                   <span className="text-2xl font-semibold text-slate-800">{stats.active}</span>
                 </div>
               </div>
-              <div className="mt-4 pt-3 border-t border-slate-50 flex items-center gap-1.5 text-xs text-emerald-600 font-semibold">
-                <ArrowUpRight className="w-3.5 h-3.5" />
-                <span>+18.7%</span>
-                <span className="text-slate-400 font-normal">vs last month</span>
+              <div className={`mt-4 pt-3 border-t border-slate-50 flex items-center gap-1.5 text-xs font-semibold ${stats.trends?.active?.value === '0%' ? 'text-slate-500' : stats.trends?.active?.trend === 'up' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                {stats.trends?.active?.value === '0%' ? <span>—</span> : stats.trends?.active?.trend === 'up' ? <ArrowUpRight className="w-3.5 h-3.5" /> : <ArrowDownRight className="w-3.5 h-3.5" />}
+                <span>{stats.trends?.active?.value === '0%' ? '' : '+'}{stats.trends?.active?.value === '0%' ? '' : stats.trends?.active?.value}</span>
+                <span className="text-slate-400 font-normal ml-1">{stats.trends?.active?.value === '0%' ? 'No change' : 'vs last month'}</span>
               </div>
             </div>
 
@@ -793,10 +792,10 @@ const Products = () => {
                   <span className="text-2xl font-semibold text-slate-800">{stats.outOfStock}</span>
                 </div>
               </div>
-              <div className="mt-4 pt-3 border-t border-slate-50 flex items-center gap-1.5 text-xs text-rose-600 font-semibold">
-                <ArrowDownRight className="w-3.5 h-3.5" />
-                <span>-4.3%</span>
-                <span className="text-slate-400 font-normal">vs last month</span>
+              <div className={`mt-4 pt-3 border-t border-slate-50 flex items-center gap-1.5 text-xs font-semibold ${stats.trends?.outOfStock?.value === '0%' ? 'text-slate-500' : stats.trends?.outOfStock?.trend === 'down' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                {stats.trends?.outOfStock?.value === '0%' ? <span>—</span> : stats.trends?.outOfStock?.trend === 'down' ? <ArrowDownRight className="w-3.5 h-3.5" /> : <ArrowUpRight className="w-3.5 h-3.5" />}
+                <span>{stats.trends?.outOfStock?.value === '0%' ? '' : '-'}{stats.trends?.outOfStock?.value === '0%' ? '' : stats.trends?.outOfStock?.value}</span>
+                <span className="text-slate-400 font-normal ml-1">{stats.trends?.outOfStock?.value === '0%' ? 'No change' : 'vs last month'}</span>
               </div>
             </div>
 
@@ -811,10 +810,10 @@ const Products = () => {
                   <span className="text-2xl font-semibold text-slate-800">{stats.lowStock}</span>
                 </div>
               </div>
-              <div className="mt-4 pt-3 border-t border-slate-50 flex items-center gap-1.5 text-xs text-rose-600 font-semibold">
-                <ArrowDownRight className="w-3.5 h-3.5" />
-                <span>-6.2%</span>
-                <span className="text-slate-400 font-normal">vs last month</span>
+              <div className={`mt-4 pt-3 border-t border-slate-50 flex items-center gap-1.5 text-xs font-semibold ${stats.trends?.lowStock?.value === '0%' ? 'text-slate-500' : stats.trends?.lowStock?.trend === 'down' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                {stats.trends?.lowStock?.value === '0%' ? <span>—</span> : stats.trends?.lowStock?.trend === 'down' ? <ArrowDownRight className="w-3.5 h-3.5" /> : <ArrowUpRight className="w-3.5 h-3.5" />}
+                <span>{stats.trends?.lowStock?.value === '0%' ? '' : '-'}{stats.trends?.lowStock?.value === '0%' ? '' : stats.trends?.lowStock?.value}</span>
+                <span className="text-slate-400 font-normal ml-1">{stats.trends?.lowStock?.value === '0%' ? 'No change' : 'vs last month'}</span>
               </div>
             </div>
 
@@ -829,9 +828,10 @@ const Products = () => {
                   <span className="text-2xl font-semibold text-slate-800">{stats.draft}</span>
                 </div>
               </div>
-              <div className="mt-4 pt-3 border-t border-slate-50 flex items-center gap-1.5 text-xs text-slate-500 font-semibold">
-                <span>—</span>
-                <span className="text-slate-400 font-normal ml-1">No change</span>
+              <div className={`mt-4 pt-3 border-t border-slate-50 flex items-center gap-1.5 text-xs font-semibold ${stats.trends?.draft?.value === '0%' ? 'text-slate-500' : stats.trends?.draft?.trend === 'up' ? 'text-slate-600' : 'text-slate-600'}`}>
+                {stats.trends?.draft?.value === '0%' ? <span>—</span> : stats.trends?.draft?.trend === 'up' ? <ArrowUpRight className="w-3.5 h-3.5" /> : <ArrowDownRight className="w-3.5 h-3.5" />}
+                <span>{stats.trends?.draft?.value === '0%' ? '' : '+'}{stats.trends?.draft?.value === '0%' ? '' : stats.trends?.draft?.value}</span>
+                <span className="text-slate-400 font-normal ml-1">{stats.trends?.draft?.value === '0%' ? 'No change' : 'vs last month'}</span>
               </div>
             </div>
           </div>
@@ -1025,79 +1025,17 @@ const Products = () => {
             </div>
 
             {/* Table Pagination Footer */}
-            {!loading && totalItems > 0 && (
-              <div className="flex flex-col sm:flex-row justify-between items-center px-6 py-4 border-t border-slate-100 bg-slate-50/20 text-sm">
-                <div className="text-slate-500 font-medium">
-                  Showing <span className="text-slate-800 font-bold">{startIndex + 1}</span> to{' '}
-                  <span className="text-slate-800 font-bold">{Math.min(startIndex + itemsPerPage, totalItems)}</span> of{' '}
-                  <span className="text-slate-800 font-bold">{totalItems}</span> products
-                </div>
-
-                <div className="flex flex-wrap items-center gap-4.5">
-                  <div className="flex items-center gap-2">
-                    <span className="text-slate-400 font-semibold text-xs">Per Page:</span>
-                    <SelectField
-                      value={itemsPerPage}
-                      onChange={(e) => {
-                        setItemsPerPage(parseInt(e.target.value));
-                        setCurrentPage(1);
-                      }}
-                      className="rounded-lg px-2.5 py-1 text-xs cursor-pointer font-bold text-slate-700"
-                      wrapperClassName="w-auto"
-                    >
-                      <option value={5}>5</option>
-                      <option value={10}>10</option>
-                      <option value={25}>25</option>
-                      <option value={50}>50</option>
-                    </SelectField>
-                  </div>
-
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      disabled={currentPage === 1}
-                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                      className="p-1.5 border border-slate-200 rounded-lg bg-white hover:bg-slate-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer text-slate-600"
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </button>
-
-                    {Array.from({ length: totalPages }).map((_, idx) => {
-                      const pageNum = idx + 1;
-                      if (totalPages > 6 && pageNum !== 1 && pageNum !== totalPages && Math.abs(pageNum - currentPage) > 1) {
-                        if (pageNum === 2 && currentPage > 3) {
-                          return <span key="ellipsis-start" className="px-1 text-slate-400">...</span>;
-                        }
-                        if (pageNum === totalPages - 1 && currentPage < totalPages - 2) {
-                          return <span key="ellipsis-end" className="px-1 text-slate-400">...</span>;
-                        }
-                        return null;
-                      }
-
-                      return (
-                        <button
-                          key={pageNum}
-                          onClick={() => setCurrentPage(pageNum)}
-                          className={`relative inline-flex items-center justify-center h-8 w-8 rounded-lg text-xs font-bold transition-all cursor-pointer ${currentPage === pageNum
-                            ? 'bg-active-btn text-white shadow-sm border-0'
-                            : 'border border-slate-200 bg-white hover:bg-slate-50 text-slate-600'
-                            }`}
-                        >
-                          {pageNum}
-                        </button>
-                      );
-                    })}
-
-                    <button
-                      disabled={currentPage === totalPages}
-                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                      className="p-1.5 border border-slate-200 rounded-lg bg-white hover:bg-slate-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer text-slate-600"
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+              itemsPerPage={itemsPerPage}
+              onItemsPerPageChange={(val) => {
+                setItemsPerPage(val);
+                setCurrentPage(1);
+              }}
+              totalItems={totalItems}
+            />
           </div>
         </>
       ) : (
@@ -1453,59 +1391,17 @@ const Products = () => {
                         )}
 
                         {/* Pagination Footer */}
-                        {!loading && totalItems > 0 && (
-                          <div className="flex flex-col sm:flex-row justify-between items-center px-6 py-4 bg-white border border-slate-100 rounded-2xl shadow-xs gap-4 text-xs font-semibold text-slate-500 animate-fade-in">
-                            <div>
-                              Showing <span className="text-slate-800 font-bold">{startIndex + 1}</span> to{' '}
-                              <span className="text-slate-800 font-bold">{Math.min(startIndex + itemsPerPage, totalItems)}</span> of{' '}
-                              <span className="text-slate-800 font-bold">{totalItems}</span> products
-                            </div>
-
-                            <div className="flex items-center gap-1.5">
-                              <button
-                                disabled={currentPage === 1}
-                                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                                className="p-1.5 border border-slate-200 rounded-lg bg-white hover:bg-slate-50 transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer text-slate-600"
-                              >
-                                <ChevronLeft className="h-3.5 w-3.5" />
-                              </button>
-
-                              {Array.from({ length: totalPages }).map((_, idx) => {
-                                const pageNum = idx + 1;
-                                if (totalPages > 6 && pageNum !== 1 && pageNum !== totalPages && Math.abs(pageNum - currentPage) > 1) {
-                                  if (pageNum === 2 && currentPage > 3) {
-                                    return <span key="ellipsis-start" className="px-1 text-slate-400">...</span>;
-                                  }
-                                  if (pageNum === totalPages - 1 && currentPage < totalPages - 2) {
-                                    return <span key="ellipsis-end" className="px-1 text-slate-400">...</span>;
-                                  }
-                                  return null;
-                                }
-
-                                return (
-                                  <button
-                                    key={pageNum}
-                                    onClick={() => setCurrentPage(pageNum)}
-                                    className={`relative inline-flex items-center justify-center h-7 w-7 rounded-lg transition-all cursor-pointer ${currentPage === pageNum
-                                      ? 'bg-gradient-to-r from-secondary to-primary text-white shadow-xs shadow-secondary/20 border-0'
-                                      : 'border border-slate-200 bg-white hover:bg-slate-50 text-slate-600'
-                                      }`}
-                                  >
-                                    {pageNum}
-                                  </button>
-                                );
-                              })}
-
-                              <button
-                                disabled={currentPage === totalPages}
-                                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                                className="p-1.5 border border-slate-200 rounded-lg bg-white hover:bg-slate-50 transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer text-slate-600"
-                              >
-                                <ChevronRight className="h-3.5 w-3.5" />
-                              </button>
-                            </div>
-                          </div>
-                        )}
+                        <Pagination
+                          currentPage={currentPage}
+                          totalPages={totalPages}
+                          onPageChange={setCurrentPage}
+                          itemsPerPage={itemsPerPage}
+                          onItemsPerPageChange={(val) => {
+                            setItemsPerPage(val);
+                            setCurrentPage(1);
+                          }}
+                          totalItems={totalItems}
+                        />
                       </>
                     )}
                   </>
@@ -1566,7 +1462,7 @@ const Products = () => {
               <label className="block text-sm flex items-center font-semibold text-slate-700 mb-1">Rate (₹)  <span className="text-red-500 ml-2">*Exclusive GST Rate</span></label>
               <input
                 type="text"
-                {...register('price', { 
+                {...register('price', {
                   required: true,
                   onChange: (e) => {
                     let val = e.target.value.replace(/[^0-9.]/g, '');

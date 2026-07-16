@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Activity, Search, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
+import { Activity, Trash2 } from 'lucide-react';
 import { getActivityLogsApi, deleteActivityLogApi } from '../commonApi/api';
 import { TableSkeleton } from '../components/common/SkeletonLoader';
+import Pagination from '../components/common/Pagination';
 import toast from 'react-hot-toast';
 
 const ActivityLogs = () => {
@@ -11,11 +12,12 @@ const ActivityLogs = () => {
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const itemsPerPage = 10;
+  const [totalItems, setTotalItems] = useState(0);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   useEffect(() => {
     fetchLogs();
-  }, [currentPage]);
+  }, [currentPage, itemsPerPage]);
 
   const fetchLogs = async () => {
     try {
@@ -23,7 +25,8 @@ const ActivityLogs = () => {
       const data = await getActivityLogsApi({ page: currentPage, limit: itemsPerPage });
       if (data.success) {
         setLogs(data.data);
-        setTotalPages(data.pagination.totalPages);
+        setTotalPages(data.pagination.totalPages || 1);
+        setTotalItems(data.pagination.totalItems || data.pagination.total || 0);
       }
     } catch (error) {
       console.error('Error fetching activity logs:', error);
@@ -142,28 +145,18 @@ const ActivityLogs = () => {
         </div>
 
         {/* Pagination */}
-        {!loading && totalPages > 1 && (
-          <div className="px-6 py-4 border-t border-slate-200 flex items-center justify-between bg-slate-50">
-            <span className="text-sm text-slate-600">
-              Page <span className="font-medium text-slate-800">{currentPage}</span> of <span className="font-medium text-slate-800">{totalPages}</span>
-            </span>
-            <div className="flex gap-2">
-              <button
-                onClick={() => handlePageChange(currentPage - 1)}
-                disabled={currentPage === 1}
-                className="p-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-white disabled:opacity-50 transition-colors"
-              >
-                <ChevronLeft className="h-5 w-5" />
-              </button>
-              <button
-                onClick={() => handlePageChange(currentPage + 1)}
-                disabled={currentPage === totalPages}
-                className="p-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-white disabled:opacity-50 transition-colors"
-              >
-                <ChevronRight className="h-5 w-5" />
-              </button>
-            </div>
-          </div>
+        {!loading && totalPages > 0 && (
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+            itemsPerPage={itemsPerPage}
+            onItemsPerPageChange={(val) => {
+              setItemsPerPage(val);
+              setCurrentPage(1);
+            }}
+            totalItems={totalItems}
+          />
         )}
       </div>
     </div>

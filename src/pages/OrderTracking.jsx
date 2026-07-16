@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getOrdersApi, updateOrderStatusApi } from '../commonApi/api';
-import { Search, Calendar, RefreshCcw, FileText, CheckCircle, Package, Truck, XCircle, Clock, ChevronRight, X, LocateFixedIcon, PackageOpen } from 'lucide-react';
+import { Search, Calendar, RefreshCcw, FileText, CheckCircle, Package, Truck, XCircle, Clock, ChevronRight, X, LocateFixedIcon, PackageOpen, ArrowUp, ArrowDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import OrderDetailsModal from '../components/orders/OrderDetailsModal';
@@ -8,6 +8,7 @@ import ImageZoomModal from '../components/common/ImageZoomModal';
 import { TableRowsSkeleton } from '../components/common/SkeletonLoader';
 import SelectField from '../components/common/SelectField';
 import ConfirmModal from '../components/common/ConfirmModal';
+import Pagination from '../components/common/Pagination';
 
 const getFrontImageUrl = (item) => {
     if (!item?.product?.images || item.product.images.length === 0) return null;
@@ -143,7 +144,9 @@ const OrderTracking = () => {
         }
     };
 
-    const StatCard = ({ icon: Icon, title, value, percentage, colorClass, iconBg, delay }) => (
+    const StatCard = ({ icon: Icon, title, value, percentage, colorClass, iconBg, delay, trend }) => {
+        const isPositive = trend === 'up';
+        return (
         <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -157,11 +160,18 @@ const OrderTracking = () => {
                 <div>
                     <p className="text-sm text-slate-500 font-medium mb-1">{title}</p>
                     <h3 className="text-2xl font-semibold text-slate-800 tracking-tight">{value}</h3>
-                    <p className="text-xs text-emerald-600 mt-1 font-medium">{percentage}</p>
+                    {trend ? (
+                        <p className={`text-xs mt-1 font-medium flex items-center ${isPositive ? 'text-emerald-600' : 'text-rose-500'}`}>
+                            {isPositive ? <ArrowUp className="w-3 h-3 mr-0.5" /> : <ArrowDown className="w-3 h-3 mr-0.5" />}
+                            {percentage}
+                        </p>
+                    ) : (
+                        <p className="text-xs text-emerald-600 mt-1 font-medium">{percentage}</p>
+                    )}
                 </div>
             </div>
         </motion.div>
-    );
+    )};
 
     const Stepper = ({ currentStep }) => {
         const steps = ['Pending', 'Approved', 'Dispatched', 'Delivered'];
@@ -368,23 +378,23 @@ const OrderTracking = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-5">
                 <StatCard
-                    icon={FileText} title="Total Orders" value={stats.total} percentage="All Time"
+                    icon={FileText} title="Total Orders" value={stats.total} percentage={`${stats.trends?.total?.value || '0%'} from last week`} trend={stats.trends?.total?.trend || 'up'}
                     colorClass="text-blue-600" iconBg="bg-blue-50" delay={0.3}
                 />
                 <StatCard
-                    icon={Package} title="In Progress" value={stats.inProgress} percentage={`${stats.total ? Math.round((stats.inProgress / stats.total) * 100) : 0}% of total`}
+                    icon={Package} title="In Progress" value={stats.inProgress} percentage={`${stats.trends?.inProgress?.value || '0%'} from last week`} trend={stats.trends?.inProgress?.trend || 'up'}
                     colorClass="text-indigo-600" iconBg="bg-indigo-50" delay={0.4}
                 />
                 <StatCard
-                    icon={Truck} title="Shipped" value={stats.shipped} percentage={`${stats.total ? Math.round((stats.shipped / stats.total) * 100) : 0}% of total`}
+                    icon={Truck} title="Shipped" value={stats.shipped} percentage={`${stats.trends?.shipped?.value || '0%'} from last week`} trend={stats.trends?.shipped?.trend || 'up'}
                     colorClass="text-amber-600" iconBg="bg-amber-50" delay={0.5}
                 />
                 <StatCard
-                    icon={CheckCircle} title="Delivered" value={stats.delivered} percentage={`${stats.total ? Math.round((stats.delivered / stats.total) * 100) : 0}% of total`}
+                    icon={CheckCircle} title="Delivered" value={stats.delivered} percentage={`${stats.trends?.delivered?.value || '0%'} from last week`} trend={stats.trends?.delivered?.trend || 'up'}
                     colorClass="text-emerald-600" iconBg="bg-emerald-50" delay={0.6}
                 />
                 <StatCard
-                    icon={XCircle} title="Cancelled" value={stats.cancelled} percentage={`${stats.total ? Math.round((stats.cancelled / stats.total) * 100) : 0}% of total`}
+                    icon={XCircle} title="Cancelled" value={stats.cancelled} percentage={`${stats.trends?.cancelled?.value || '0%'} from last week`} trend={stats.trends?.cancelled?.trend || 'down'}
                     colorClass="text-rose-600" iconBg="bg-rose-50" delay={0.7}
                 />
             </div>
@@ -522,70 +532,17 @@ const OrderTracking = () => {
                 </div>
 
                 {/* Pagination */}
-                <div className="px-6 py-4 bg-slate-50/50 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
-                    <p className="text-sm text-slate-500 font-medium">
-                        Showing <span className="font-bold text-slate-700">{totalOrders === 0 ? 0 : (page - 1) * limit + 1}</span> to <span className="font-bold text-slate-700">{Math.min(page * limit, totalOrders)}</span> of <span className="font-bold text-slate-700">{totalOrders}</span> orders
-                    </p>
-                    <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-2 text-sm text-slate-500 font-medium">
-                            Rows per page:
-                            <SelectField
-                                className="px-2 py-1.5 rounded-lg text-sm cursor-pointer hover:border-slate-300 transition-colors"
-                                wrapperClassName="w-auto"
-                                value={limit}
-                                onChange={(e) => {
-                                    setLimit(Number(e.target.value));
-                                    setPage(1);
-                                }}
-                            >
-                                <option value={10}>10</option>
-                                <option value={20}>20</option>
-                                <option value={50}>50</option>
-                            </SelectField>
-                        </div>
-                        <div className="w-px h-6 bg-slate-200 mx-1"></div>
-                        <div className="flex items-center gap-1">
-                            <button
-                                onClick={() => setPage(p => Math.max(1, p - 1))}
-                                disabled={page === 1}
-                                className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 bg-white hover:bg-slate-50 hover:text-slate-700 disabled:opacity-40 disabled:hover:bg-white transition-colors"
-                            >
-                                <ChevronRight className="w-4 h-4 rotate-180" />
-                            </button>
-
-                            {totalPages > 0 && [...Array(totalPages)].map((_, i) => {
-                                // Simple logic to show a few pages around current page
-                                if (totalPages > 5) {
-                                    if (i !== 0 && i !== totalPages - 1 && Math.abs(page - (i + 1)) > 1) {
-                                        if (i === 1 || i === totalPages - 2) return <span key={i} className="px-1 text-slate-400">...</span>;
-                                        return null;
-                                    }
-                                }
-
-                                return (
-                                    <button
-                                        key={i}
-                                        onClick={() => setPage(i + 1)}
-                                        className={`w-8 h-8 flex items-center justify-center rounded-lg text-sm font-bold transition-all ${page === i + 1
-                                            ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20 border border-blue-600'
-                                            : 'border border-slate-200 text-slate-600 bg-white hover:bg-slate-50 hover:text-blue-600 hover:border-blue-200'
-                                            }`}
-                                    >
-                                        {i + 1}
-                                    </button>
-                                );
-                            })}
-
-                            <button
-                                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                                disabled={page === totalPages || totalPages === 0}
-                                className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-500 bg-white hover:bg-slate-50 hover:text-slate-700 disabled:opacity-40 disabled:hover:bg-white transition-colors"
-                            >
-                                <ChevronRight className="w-4 h-4" />
-                            </button>
-                        </div>
-                    </div>
-                </div>
+                <Pagination
+                    currentPage={page}
+                    totalPages={totalPages}
+                    onPageChange={setPage}
+                    itemsPerPage={limit}
+                    onItemsPerPageChange={(val) => {
+                        setLimit(val);
+                        setPage(1);
+                    }}
+                    totalItems={totalOrders}
+                />
             </motion.div>
 
             <ConfirmModal

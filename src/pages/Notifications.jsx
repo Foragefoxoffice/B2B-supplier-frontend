@@ -27,7 +27,7 @@ const Notifications = () => {
   const token = localStorage.getItem('token');
   const user = userString ? JSON.parse(userString) : null;
 
-  const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification } = useNotifications(user, token);
+  const { notifications, unreadCount, loading, markAsRead, markAllAsRead, deleteNotification, deleteAllNotifications } = useNotifications(user, token);
   const [activeTab, setActiveTab] = useState('all'); // 'all' or 'unread'
 
   const filteredNotifications = activeTab === 'all'
@@ -45,15 +45,26 @@ const Notifications = () => {
           </p>
         </div>
 
-        {unreadCount > 0 && (
-          <button
-            onClick={markAllAsRead}
-            className="flex items-center text-sm font-medium text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-lg transition-colors cursor-pointer"
-          >
-            <Check className="h-4 w-4 mr-2" />
-            Mark all as read
-          </button>
-        )}
+        <div className="flex items-center gap-3">
+          {unreadCount > 0 && (
+            <button
+              onClick={markAllAsRead}
+              className="flex items-center text-sm font-medium text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-lg transition-colors cursor-pointer"
+            >
+              <Check className="h-4 w-4 mr-2" />
+              Mark all as read
+            </button>
+          )}
+          {notifications?.length > 0 && (
+            <button
+              onClick={deleteAllNotifications}
+              className="flex items-center text-sm font-medium text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-4 py-2 rounded-lg transition-colors cursor-pointer"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete all
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Main Content Area */}
@@ -94,7 +105,22 @@ const Notifications = () => {
 
         {/* Notification List */}
         <div className="divide-y divide-slate-100">
-          {filteredNotifications.length > 0 ? (
+          {loading ? (
+            // Skeleton Loader
+            Array.from({ length: 5 }).map((_, i) => (
+              <div key={`skeleton-${i}`} className="p-6 flex items-start gap-4 animate-pulse">
+                <div className="h-10 w-10 shrink-0 rounded-full bg-slate-200"></div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="h-4 bg-slate-200 rounded w-1/3"></div>
+                    <div className="h-3 bg-slate-200 rounded w-24"></div>
+                  </div>
+                  <div className="h-3 bg-slate-200 rounded w-3/4 mb-1"></div>
+                  <div className="h-3 bg-slate-200 rounded w-1/2"></div>
+                </div>
+              </div>
+            ))
+          ) : filteredNotifications.length > 0 ? (
             filteredNotifications.map((notification) => {
               const { icon: Icon, color } = getNotificationIcon(notification.type);
               return (
@@ -152,7 +178,7 @@ const Notifications = () => {
               <div className="h-20 w-20 bg-slate-50 rounded-full flex items-center justify-center mb-4 border border-slate-100">
                 <Bell className="h-8 w-8 text-slate-300" />
               </div>
-              <h3 className="text-lg font-bold text-slate-800 mb-1">No notifications yet</h3>
+              <h3 className="text-lg font-semibold text-slate-800 mb-1">No notifications yet</h3>
               <p className="text-slate-500 max-w-sm mx-auto">
                 {activeTab === 'unread'
                   ? "You've read all your notifications. You're all caught up!"

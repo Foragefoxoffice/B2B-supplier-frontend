@@ -13,6 +13,7 @@ const SelectField = React.forwardRef(({
   value,
   onChange,
   disabled,
+  menuPosition = 'bottom',
   ...props
 }, ref) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -153,11 +154,11 @@ const SelectField = React.forwardRef(({
         <AnimatePresence>
           {isOpen && (
             <motion.div
-              initial={{ opacity: 0, y: -5, scale: 0.98 }}
+              initial={{ opacity: 0, y: menuPosition === 'top' ? 5 : -5, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -5, scale: 0.98 }}
+              exit={{ opacity: 0, y: menuPosition === 'top' ? 5 : -5, scale: 0.98 }}
               transition={{ duration: 0.15, ease: "easeOut" }}
-              className="absolute z-50 w-full mt-1.5 bg-white border border-slate-100 rounded-xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.1)] overflow-hidden"
+              className={`absolute z-50 w-full ${menuPosition === 'top' ? 'bottom-full mb-1.5' : 'mt-1.5'} bg-white border border-slate-100 rounded-xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.1)] overflow-hidden`}
             >
               <div className="max-h-60 overflow-y-auto py-1.5 custom-scrollbar">
                 {options.map((option, idx) => {
