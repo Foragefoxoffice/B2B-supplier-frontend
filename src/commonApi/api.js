@@ -93,6 +93,11 @@ export const deleteSupplierApi = async (id) => {
   return response.data;
 };
 
+export const regenerateSupplierPasswordApi = async (id) => {
+  const response = await api.post(`/suppliers/${id}/regenerate-password`);
+  return response.data;
+};
+
 // ==========================
 // CATEGORIES
 // ==========================

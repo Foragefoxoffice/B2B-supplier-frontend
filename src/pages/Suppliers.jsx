@@ -5,12 +5,12 @@ import {
   MoreVertical, ChevronLeft, ChevronRight, MapPin, Phone,
   ArrowUp, ArrowDown,
   User2Icon,
-  Edit, Trash2
+  Edit, Trash2, Key
 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import ConfirmModal from '../components/common/ConfirmModal';
-import { getSuppliersApi, createSupplierApi, deleteSupplierApi, updateSupplierApi } from '../commonApi/api';
+import { getSuppliersApi, createSupplierApi, deleteSupplierApi, updateSupplierApi, regenerateSupplierPasswordApi } from '../commonApi/api';
 import Modal from '../components/ui/Modal';
 import { TableRowsSkeleton } from '../components/common/SkeletonLoader';
 import SelectField from '../components/common/SelectField';
@@ -34,6 +34,8 @@ const Suppliers = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [deleteSupplierId, setDeleteSupplierId] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isRegenerating, setIsRegenerating] = useState(false);
+  const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
 
   const [dashboardStats, setDashboardStats] = useState({
     totalSuppliers: 0,
@@ -184,6 +186,30 @@ const Suppliers = () => {
     } finally {
       setShowDeleteConfirm(false);
       setDeleteSupplierId(null);
+    }
+  };
+
+  const handleRegeneratePassword = () => {
+    setShowRegenerateConfirm(true);
+  };
+
+  const confirmRegeneratePassword = async () => {
+    if (!editingSupplier) return;
+    try {
+      setIsRegenerating(true);
+      const res = await regenerateSupplierPasswordApi(editingSupplier.id);
+      if (res.success) {
+        toast.success(res.message || 'Password regenerated successfully!');
+      } else {
+        toast.error(res.message || 'Failed to regenerate password.');
+      }
+    } catch (error) {
+      console.error('Error regenerating password:', error);
+      const errorMsg = error.response?.data?.message || 'Failed to regenerate password.';
+      toast.error(errorMsg);
+    } finally {
+      setIsRegenerating(false);
+      setShowRegenerateConfirm(false);
     }
   };
 
@@ -455,6 +481,17 @@ const Suppliers = () => {
         confirmVariant="danger"
       />
 
+      <ConfirmModal
+        isOpen={showRegenerateConfirm}
+        title="Regenerate Password"
+        message={`Are you sure you want to regenerate the password for ${editingSupplier?.name}? This will reset their login credentials and email them the new password.`}
+        onConfirm={confirmRegeneratePassword}
+        onCancel={() => setShowRegenerateConfirm(false)}
+        confirmText={isRegenerating ? "Regenerating..." : "Regenerate"}
+        confirmVariant="warning"
+        disableConfirm={isRegenerating}
+      />
+
       {/* Add / Edit Modal */}
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingSupplier ? "Edit Supplier" : "Add Supplier"}>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -588,21 +625,36 @@ const Suppliers = () => {
               />
             </div>
           </div>
-          <div className="pt-4 flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={() => setIsModalOpen(false)}
-              className="px-4 py-2 border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition-colors font-medium cursor-pointer"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="px-5 py-2.5 bg-[#2563EB] text-white rounded-xl hover:bg-blue-700 transition-colors text-[14px] font-medium disabled:opacity-50 cursor-pointer shadow-sm"
-            >
-              {isSubmitting ? 'Saving...' : (editingSupplier ? 'Update Supplier' : 'Save Supplier')}
-            </button>
+          <div className="pt-4 flex justify-between items-center">
+            <div>
+              {editingSupplier && (
+                <button
+                  type="button"
+                  onClick={handleRegeneratePassword}
+                  disabled={isRegenerating}
+                  className="px-4 py-2 bg-amber-50 text-amber-700 border border-amber-200 rounded-xl hover:bg-amber-100 disabled:opacity-50 transition-colors text-[14px] font-medium cursor-pointer flex items-center gap-1.5 shadow-xs"
+                >
+                  <Key className="w-4 h-4 text-amber-600 animate-pulse" />
+                  {isRegenerating ? 'Regenerating...' : 'Regenerate Password'}
+                </button>
+              )}
+            </div>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setIsModalOpen(false)}
+                className="px-4 py-2 border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition-colors font-medium cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="px-5 py-2.5 bg-[#2563EB] text-white rounded-xl hover:bg-blue-700 transition-colors text-[14px] font-medium disabled:opacity-50 cursor-pointer shadow-sm"
+              >
+                {isSubmitting ? 'Saving...' : (editingSupplier ? 'Update Supplier' : 'Save Supplier')}
+              </button>
+            </div>
           </div>
         </form>
       </Modal>

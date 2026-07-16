@@ -605,7 +605,7 @@ const Cart = () => {
                                     onClick={() => {
                                         selectedItems.forEach(item => removeFromCart(item.variant.id));
                                         setOrderStatus('idle');
-                                        navigate('/orders');
+                                        navigate('/order-tracking');
                                     }}
                                     className="w-full bg-active-btn flex items-center justify-center gap-2 text-white font-medium py-3.5 rounded-xl hover:bg-blue-700 transition-colors shadow-md shadow-blue-200"
                                 >
