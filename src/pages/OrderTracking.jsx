@@ -417,7 +417,7 @@ const OrderTracking = () => {
                 <AnimatePresence>
                 </AnimatePresence>
 
-                <div className="overflow-x-auto overflow-y-hidden no-scrollbar">
+                <div className="overflow-x-auto overflow-y-hidden pb-2 min-h-[320px]">
                     <table className="w-full text-left text-sm whitespace-nowrap">
                         <thead className="bg-slate-50/80 border-b border-slate-100 text-slate-600 font-medium text-[15px]">
                             <tr>
@@ -480,7 +480,7 @@ const OrderTracking = () => {
                                                             <p className="text-xs font-medium text-slate-500 truncate max-w-[180px] cursor-help border-b border-dashed border-slate-300 pb-0.5 inline-block">{firstItem?.name || 'Multiple Items'}</p>
                                                             
                                                             {order.supplier && (
-                                                                <div className="absolute left-0 top-full mt-2 w-64 bg-white rounded-xl shadow-xl border border-slate-100 p-4 opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-300 z-50">
+                                                                <div className={`absolute left-0 ${index >= orders.length - 2 && index > 0 ? 'bottom-full mb-2' : 'top-full mt-2'} w-64 bg-white rounded-xl shadow-xl border border-slate-100 p-4 opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-300 z-50`}>
                                                                     <div className="flex items-start gap-3 mb-3 border-b border-slate-50 pb-3">
                                                                         <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 font-bold text-sm shrink-0">
                                                                             {order.supplier.name?.charAt(0)}
