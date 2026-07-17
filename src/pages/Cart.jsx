@@ -68,6 +68,7 @@ const Cart = () => {
     const [orderGivenBy, setOrderGivenBy] = useState('');
     const [phoneNumber, setPhoneNumber] = useState('');
     const [orderRemarks, setOrderRemarks] = useState('');
+    const [signatureFile, setSignatureFile] = useState(null);
 
     useEffect(() => {
         const fetchTransporters = async () => {
@@ -99,20 +100,27 @@ const Cart = () => {
         try {
             setIsSubmitting(true);
 
-            const payload = {
-                supplier_id: selectedSupplierId,
-                transporter_id: selectedTransporters[selectedSupplierId] || null,
-                order_given_by: orderGivenBy,
-                phone_number: phoneNumber,
-                remarks: orderRemarks,
-                items: selectedItems.map(item => ({
-                    product_id: item.product.id,
-                    variant_id: item.variant.id,
-                    quantity: item.quantity,
-                    rate: item.product.price,
-                    remarks: `Color: ${item.variant.color || 'Default'}${item.remarks ? ` | Notes: ${item.remarks}` : ''}`
-                }))
-            };
+            const payload = new FormData();
+            payload.append('supplier_id', selectedSupplierId);
+            if (selectedTransporters[selectedSupplierId]) {
+                payload.append('transporter_id', selectedTransporters[selectedSupplierId]);
+            }
+            if (orderGivenBy) payload.append('order_given_by', orderGivenBy);
+            if (phoneNumber) payload.append('phone_number', phoneNumber);
+            if (orderRemarks) payload.append('remarks', orderRemarks);
+
+            const itemsArray = selectedItems.map(item => ({
+                product_id: item.product.id,
+                variant_id: item.variant.id,
+                quantity: item.quantity,
+                rate: item.product.price,
+                remarks: `Color: ${item.variant.color || 'Default'}${item.remarks ? ` | Notes: ${item.remarks}` : ''}`
+            }));
+            payload.append('items', JSON.stringify(itemsArray));
+
+            if (signatureFile) {
+                payload.append('signature', signatureFile);
+            }
 
             const data = await createOrderApi(payload);
             if (data.success) {
@@ -400,6 +408,24 @@ const Cart = () => {
                                         rows={2}
                                         className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500 resize-none"
                                     />
+                                </div>
+                                <div>
+                                    <label className="text-[13px] font-semibold text-slate-600 mb-1 block">Upload Signature (Optional)</label>
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={(e) => setSignatureFile(e.target.files[0])}
+                                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500"
+                                    />
+                                    {signatureFile && (
+                                        <div className="mt-3 w-32 h-20 border border-slate-200 rounded-lg overflow-hidden bg-slate-50">
+                                            <ImageZoomModal 
+                                                src={URL.createObjectURL(signatureFile)} 
+                                                alt="Signature Preview" 
+                                                className="w-full h-full object-contain hover:opacity-80 transition-opacity cursor-pointer" 
+                                            />
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 

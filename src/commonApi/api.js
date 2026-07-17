@@ -131,16 +131,12 @@ export const getProductsApi = async (params = {}) => {
 
 export const createProductApi = async (formData) => {
   // formData because we upload images via Multer
-  const response = await api.post('/products', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  });
+  const response = await api.post('/products', formData);
   return response.data;
 };
 
 export const updateProductApi = async (id, formData) => {
-  const response = await api.put(`/products/${id}`, formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  });
+  const response = await api.put(`/products/${id}`, formData);
   return response.data;
 };
 
@@ -192,7 +188,6 @@ export const updateOrderStatusApi = async (id, status, remarks = '', deliveryDet
     if (deliveryDetails.trackingNumber) payload.append('trackingNumber', deliveryDetails.trackingNumber);
     if (deliveryDetails.bookingCopy) payload.append('bookingCopy', deliveryDetails.bookingCopy);
     if (deliveryDetails.invoiceCopy) payload.append('invoiceCopy', deliveryDetails.invoiceCopy);
-    headers['Content-Type'] = 'multipart/form-data';
   } else {
     payload = { status, remarks };
     if (deliveryDetails && deliveryDetails.trackingNumber) {
@@ -206,6 +201,16 @@ export const updateOrderStatusApi = async (id, status, remarks = '', deliveryDet
 
 export const deleteOrderApi = async (id) => {
   const response = await api.delete(`/orders/${id}`);
+  return response.data;
+};
+
+export const downloadOrderPdfApi = async (id) => {
+  const response = await api.get(`/orders/${id}/pdf`, { responseType: 'blob' });
+  return response.data;
+};
+
+export const viewOrderHtmlApi = async (id) => {
+  const response = await api.get(`/orders/${id}/html`, { responseType: 'text' });
   return response.data;
 };
 

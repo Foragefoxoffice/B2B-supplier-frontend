@@ -1,7 +1,8 @@
 import React from 'react';
-import { FileText, Package, X, Check, XCircle } from 'lucide-react';
+import { FileText, Package, X, Check, XCircle, Download, Eye } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ImageZoomModal from '../common/ImageZoomModal';
+import { downloadOrderPdfApi, viewOrderHtmlApi } from '../../commonApi/api';
 
 const getTimeAgo = (dateString) => {
     if (!dateString) return '';
@@ -60,9 +61,45 @@ const getStatusInfo = (status) => {
 };
 
 const OrderDetailsModal = ({ order, onClose, onUpdateStatus }) => {
+    const [isProcessingPdf, setIsProcessingPdf] = React.useState(false);
+
     if (!order) return null;
     const date = new Date(order.date);
     const statusInfo = getStatusInfo(order.status);
+
+    const handleDownloadPdf = async () => {
+        try {
+            setIsProcessingPdf(true);
+            const blob = await downloadOrderPdfApi(order.id);
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${order.po_number}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            a.remove();
+        } catch (error) {
+            console.error("Failed to download PDF", error);
+        } finally {
+            setIsProcessingPdf(false);
+        }
+    };
+
+    const handleViewPdf = async () => {
+        try {
+            setIsProcessingPdf(true);
+            const html = await viewOrderHtmlApi(order.id);
+            const blob = new Blob([html], { type: 'text/html' });
+            const url = window.URL.createObjectURL(blob);
+            window.open(url, '_blank');
+            setTimeout(() => window.URL.revokeObjectURL(url), 1000);
+        } catch (error) {
+            console.error("Failed to view Order Form", error);
+        } finally {
+            setIsProcessingPdf(false);
+        }
+    };
 
     return (
         <AnimatePresence>
@@ -85,9 +122,33 @@ const OrderDetailsModal = ({ order, onClose, onUpdateStatus }) => {
                             <h2 className="text-xl font-semibold text-slate-800">Order Details</h2>
                             <p className="text-sm text-slate-500 mt-1">PO Number: <span className="font-semibold text-slate-700">{order.po_number}</span></p>
                         </div>
-                        <button onClick={onClose} className="p-2 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-400 hover:text-slate-600 transition-colors">
-                            <X className="w-5 h-5" />
-                        </button>
+                        <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-2">
+                                <span className="text-[16px] font-semibold text-red-500 hidden sm:block">Order Form:</span>
+                                <div className="flex rounded-lg shadow-xs border border-slate-200">
+                                    <button
+                                        onClick={handleViewPdf}
+                                        disabled={isProcessingPdf}
+                                        className="px-3 py-1.5 bg-blue-600 text-white rounded-l-lg hover:bg-blue-700 transition-colors flex items-center gap-1.5 text-sm font-medium border-r border-slate-200 disabled:opacity-50"
+                                        title="View Order Form"
+                                    >
+                                        <Eye className="w-4 h-4" /> View
+                                    </button>
+                                    <button
+                                        onClick={handleDownloadPdf}
+                                        disabled={isProcessingPdf}
+                                        className="px-3 py-1.5 bg-blue-600 text-white rounded-r-lg hover:bg-blue-700 transition-colors flex items-center gap-1.5 text-sm font-medium disabled:opacity-50"
+                                        title="Download Order Form"
+                                    >
+                                        <Download className="w-4 h-4" /> Download
+                                    </button>
+                                </div>
+                            </div>
+                            <div className="w-px h-6 bg-slate-200 mx-1 hidden sm:block"></div>
+                            <button onClick={onClose} className="p-2 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-400 hover:text-slate-600 transition-colors">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
                     </div>
 
                     <div className="p-6 overflow-y-auto">

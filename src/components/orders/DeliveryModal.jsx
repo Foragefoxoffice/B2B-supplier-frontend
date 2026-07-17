@@ -18,7 +18,12 @@ const DeliveryModal = ({ isOpen, onClose, onConfirm }) => {
         initialQuality: 0.7
       };
       try {
-        return await imageCompression(file, options);
+        const compressedFile = await imageCompression(file, options);
+        // Ensure it's a File object with the original name so multer doesn't reject it for having no extension
+        return new File([compressedFile], file.name, {
+          type: compressedFile.type,
+          lastModified: Date.now(),
+        });
       } catch (error) {
         console.error('Error compressing image:', error);
         return file;
