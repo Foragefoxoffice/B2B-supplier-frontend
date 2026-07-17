@@ -15,7 +15,7 @@ import ImageZoomModal from '../components/common/ImageZoomModal';
 import { getPaletteSync } from 'colorthief';
 import imageCompression from 'browser-image-compression';
 import namer from 'color-namer';
-import { TableSkeleton } from '../components/common/SkeletonLoader';
+import { TableSkeleton, ProductCardSkeleton } from '../components/common/SkeletonLoader';
 import SelectField from '../components/common/SelectField';
 import Pagination from '../components/common/Pagination';
 
@@ -1261,8 +1261,10 @@ const Products = () => {
 
                         {/* Products Catalog Cards Grid */}
                         {loading ? (
-                          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm py-20 text-center text-slate-500 font-medium">
-                            Loading products catalog...
+                          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+                            {Array.from({ length: 6 }).map((_, i) => (
+                              <ProductCardSkeleton key={i} />
+                            ))}
                           </div>
                         ) : paginatedProducts.length === 0 ? (
                           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm py-20 text-center text-slate-400 font-semibold flex flex-col items-center justify-center gap-3">

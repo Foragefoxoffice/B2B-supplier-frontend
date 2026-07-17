@@ -154,3 +154,49 @@ export const FullDashboardSkeleton = () => {
     </div>
   );
 };
+
+export const ProductCardSkeleton = () => {
+  return (
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-xs flex flex-col justify-between overflow-hidden">
+      {/* Saree Cover Image Section Skeleton */}
+      <Skeleton className="aspect-[8/7] w-full" rounded="rounded-none" />
+
+      {/* Product Details Section Skeleton */}
+      <div className="p-4.5 flex-1 flex flex-col justify-between text-left">
+        <div>
+          {/* Category */}
+          <Skeleton className="h-3 w-16 mb-2" />
+
+          {/* Product Name */}
+          <Skeleton className="h-4 w-3/4 mb-3" />
+
+          {/* Badges Row */}
+          <div className="flex flex-wrap items-center gap-1.5 mb-3.5">
+            <Skeleton className="h-5 w-20 rounded-md" />
+            <Skeleton className="h-5 w-16 rounded-md" />
+            <Skeleton className="h-5 w-24 rounded-md" />
+          </div>
+        </div>
+
+        {/* Price & MOQ Row */}
+        <div className="flex items-center justify-between pt-3 border-t border-slate-100 mt-auto">
+          <div>
+            <Skeleton className="h-3 w-10 mb-1" />
+            <Skeleton className="h-5 w-20" />
+          </div>
+
+          <div className="text-right">
+            <Skeleton className="h-3 w-14 mb-1 ml-auto" />
+            <Skeleton className="h-5 w-16" />
+          </div>
+        </div>
+      </div>
+
+      {/* Footer Action Buttons Section Skeleton */}
+      <div className="grid grid-cols-2 gap-2 p-4 pt-0 border-t border-slate-50 mt-1 shrink-0">
+        <Skeleton className="h-10 w-full rounded-xl" />
+        <Skeleton className="h-10 w-full rounded-xl" />
+      </div>
+    </div>
+  );
+};
