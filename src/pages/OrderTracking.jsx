@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getOrdersApi, updateOrderStatusApi } from '../commonApi/api';
-import { Search, Calendar, RefreshCcw, FileText, CheckCircle, Package, Truck, XCircle, Clock, ChevronRight, X, LocateFixedIcon, PackageOpen, ArrowUp, ArrowDown } from 'lucide-react';
+import { Search, Calendar, RefreshCcw, FileText, CheckCircle, Package, Truck, XCircle, Clock, ChevronRight, X, LocateFixedIcon, PackageOpen, ArrowUp, ArrowDown, Phone, MapPin } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import OrderDetailsModal from '../components/orders/OrderDetailsModal';
@@ -130,11 +130,11 @@ const OrderTracking = () => {
     const getStatusInfo = (status) => {
         switch (status) {
             case 'SENT':
-                return { label: 'Pending', color: 'text-slate-600', bg: 'bg-slate-50', dot: 'bg-slate-500', step: 1 };
+                return { label: 'Pending', color: 'text-amber-600', bg: 'bg-amber-50', dot: 'bg-amber-500', step: 1 };
             case 'ACCEPTED':
                 return { label: 'Approved', color: 'text-blue-600', bg: 'bg-blue-50', dot: 'bg-blue-600', step: 2 };
             case 'DISPATCHED':
-                return { label: 'Dispatched', color: 'text-amber-600', bg: 'bg-amber-50', dot: 'bg-amber-500', step: 3 };
+                return { label: 'Dispatched', color: 'text-indigo-600', bg: 'bg-indigo-50', dot: 'bg-indigo-500', step: 3 };
             case 'COMPLETED':
                 return { label: 'Delivered', color: 'text-emerald-600', bg: 'bg-emerald-50', dot: 'bg-emerald-500', step: 4 };
             case 'REJECTED':
@@ -205,6 +205,16 @@ const OrderTracking = () => {
             );
         }
 
+        const getStepStyles = (num) => {
+            switch(num) {
+                case 1: return { bg: 'bg-amber-500', text: 'text-amber-600', ring: 'ring-amber-100 shadow-amber-200' };
+                case 2: return { bg: 'bg-blue-500', text: 'text-blue-600', ring: 'ring-blue-100 shadow-blue-200' };
+                case 3: return { bg: 'bg-indigo-500', text: 'text-indigo-600', ring: 'ring-indigo-100 shadow-indigo-200' };
+                case 4: return { bg: 'bg-emerald-500', text: 'text-emerald-600', ring: 'ring-emerald-100 shadow-emerald-200' };
+                default: return { bg: 'bg-slate-200', text: 'text-slate-400', ring: 'ring-slate-50' };
+            }
+        };
+
         return (
             <div className="flex items-center w-full min-w-[300px] max-w-[320px]">
                 {steps.map((step, index) => {
@@ -212,6 +222,7 @@ const OrderTracking = () => {
                     const isCompleted = stepNumber <= currentStep;
                     const isCurrent = stepNumber === currentStep;
                     const isLast = index === steps.length - 1;
+                    const styles = getStepStyles(stepNumber);
 
                     return (
                         <React.Fragment key={step}>
@@ -220,8 +231,7 @@ const OrderTracking = () => {
                                     initial={isCurrent ? { scale: 0.8 } : false}
                                     animate={isCurrent ? { scale: 1 } : false}
                                     transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                                    className={`w-5 h-5 rounded-full flex items-center justify-center z-10 transition-all duration-500 ${isCompleted ? (isCurrent && stepNumber !== 4 ? 'bg-blue-600 ring-4 ring-blue-100 shadow-lg shadow-blue-200' : 'bg-emerald-500 ring-4 ring-emerald-50') : 'bg-slate-200'
-                                        }`}
+                                    className={`w-5 h-5 rounded-full flex items-center justify-center z-10 transition-all duration-500 ${isCompleted ? `${styles.bg} ring-4 ${styles.ring} ${isCurrent && stepNumber !== 4 ? 'shadow-lg' : ''}` : 'bg-slate-200'}`}
                                 >
                                     {isCompleted && stepNumber !== currentStep && stepNumber !== 4 && (
                                         <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}>
@@ -247,8 +257,7 @@ const OrderTracking = () => {
                                         </div>
                                     )}
                                 </motion.div>
-                                <span className={`text-[11px] font-semibold mt-2 absolute top-6 whitespace-nowrap transition-colors duration-300 ${isCurrent && stepNumber !== 4 ? 'text-blue-600' : (isCompleted ? 'text-emerald-600' : 'text-slate-400')
-                                    }`}>{step}</span>
+                                <span className={`text-[11px] font-semibold mt-2 absolute top-6 whitespace-nowrap transition-colors duration-300 ${isCompleted ? styles.text : 'text-slate-400'}`}>{step}</span>
                             </div>
                             {!isLast && (
                                 <div className="relative mx-1 -mt-6" style={{ flex: 2 }}>
@@ -257,7 +266,7 @@ const OrderTracking = () => {
                                         initial={{ width: "0%" }}
                                         animate={{ width: isCompleted && stepNumber < currentStep ? "100%" : "0%" }}
                                         transition={{ duration: 0.8, ease: "easeInOut" }}
-                                        className="absolute top-3 inset-0 h-0.5 bg-emerald-500 rounded-full"
+                                        className={`absolute top-3 inset-0 h-0.5 ${styles.bg} rounded-full`}
                                     ></motion.div>
                                 </div>
                             )}
@@ -463,12 +472,40 @@ const OrderTracking = () => {
                                                         <div className="w-12 h-12 rounded-xl bg-slate-50 flex-shrink-0 flex items-center justify-center overflow-hidden border border-slate-200 group-hover:border-blue-200 group-hover:shadow-md transition-all">
                                                             <ImageZoomModal src={getFrontImageUrl(order.items?.[0]) || `https://ui-avatars.com/api/?name=${firstItem?.name || 'O'}&background=random&color=fff&rounded=false&size=128`} alt={firstItem?.name} className="w-full h-full object-cover" />
                                                         </div>
-                                                        <div>
+                                                        <div className="relative group/tooltip">
                                                             <div className="flex items-center gap-2 mb-1">
                                                                 <span className="font-semibold text-slate-800 text-[14px] hover:text-blue-600 cursor-pointer transition-colors">{order.po_number}</span>
                                                                 <div className="px-2 py-0.5 rounded text-[9px] font-bold bg-slate-100 text-slate-500 uppercase tracking-wider">PO</div>
                                                             </div>
-                                                            <p className="text-xs font-medium text-slate-500 truncate max-w-[180px]">{firstItem?.name || 'Multiple Items'}</p>
+                                                            <p className="text-xs font-medium text-slate-500 truncate max-w-[180px] cursor-help border-b border-dashed border-slate-300 pb-0.5 inline-block">{firstItem?.name || 'Multiple Items'}</p>
+                                                            
+                                                            {order.supplier && (
+                                                                <div className="absolute left-0 top-full mt-2 w-64 bg-white rounded-xl shadow-xl border border-slate-100 p-4 opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-300 z-50">
+                                                                    <div className="flex items-start gap-3 mb-3 border-b border-slate-50 pb-3">
+                                                                        <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 font-bold text-sm shrink-0">
+                                                                            {order.supplier.name?.charAt(0)}
+                                                                        </div>
+                                                                        <div className="flex-1 min-w-0">
+                                                                            <h4 className="font-bold text-slate-800 text-sm truncate">{order.supplier.name}</h4>
+                                                                            <p className="text-[11px] text-slate-500 font-medium">Code: {order.supplier.supplier_code}</p>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="space-y-2">
+                                                                        {order.supplier.phone && (
+                                                                            <div className="flex items-center gap-2 text-xs text-slate-600">
+                                                                                <Phone className="w-3.5 h-3.5 text-slate-400" />
+                                                                                {order.supplier.phone}
+                                                                            </div>
+                                                                        )}
+                                                                        {order.supplier.city && (
+                                                                            <div className="flex items-center gap-2 text-xs text-slate-600">
+                                                                                <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                                                                <span className="truncate">{order.supplier.city}{order.supplier.state ? `, ${order.supplier.state}` : ''}</span>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     </div>
                                                 </td>
@@ -492,9 +529,6 @@ const OrderTracking = () => {
                                                 </td>
                                                 <td className="px-6 py-4">
                                                     <p className="font-bold text-slate-800 text-[14px]">₹ {parseFloat(order.total_amount).toLocaleString('en-IN')}</p>
-                                                    <span className="inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded text-[10px] font-bold border border-emerald-100">
-                                                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div> Paid
-                                                    </span>
                                                 </td>
                                                 <td className="px-6 py-4">
                                                     <div className="flex flex-col items-start">

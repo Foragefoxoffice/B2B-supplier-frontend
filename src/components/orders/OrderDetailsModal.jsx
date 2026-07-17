@@ -1,5 +1,5 @@
 import React from 'react';
-import { FileText, Package, X, Check, XCircle, Download, Eye } from 'lucide-react';
+import { FileText, Package, X, Check, XCircle, Download, Eye, User, Phone, MapPin, Mail } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ImageZoomModal from '../common/ImageZoomModal';
 import { downloadOrderPdfApi, viewOrderHtmlApi } from '../../commonApi/api';
@@ -52,10 +52,10 @@ const getOrderedImageObj = (item, orderRemarks) => {
 const getStatusInfo = (status) => {
     switch (status) {
         case 'SENT': return { label: 'Pending', color: 'text-amber-600', bg: 'bg-amber-50', dot: 'bg-amber-500' };
-        case 'ACCEPTED': return { label: 'Approved', color: 'text-emerald-600', bg: 'bg-emerald-50', dot: 'bg-emerald-600' };
-        case 'DISPATCHED': return { label: 'Dispatched', color: 'text-blue-600', bg: 'bg-blue-50', dot: 'bg-blue-500' };
-        case 'COMPLETED': return { label: 'Delivered', color: 'text-teal-600', bg: 'bg-teal-50', dot: 'bg-teal-500' };
-        case 'REJECTED': return { label: 'Cancelled', color: 'text-red-600', bg: 'bg-red-50', dot: 'bg-red-500' };
+        case 'ACCEPTED': return { label: 'Approved', color: 'text-blue-600', bg: 'bg-blue-50', dot: 'bg-blue-600' };
+        case 'DISPATCHED': return { label: 'Dispatched', color: 'text-indigo-600', bg: 'bg-indigo-50', dot: 'bg-indigo-500' };
+        case 'COMPLETED': return { label: 'Delivered', color: 'text-emerald-600', bg: 'bg-emerald-50', dot: 'bg-emerald-500' };
+        case 'REJECTED': return { label: 'Cancelled', color: 'text-rose-600', bg: 'bg-rose-50', dot: 'bg-rose-500' };
         default: return { label: status, color: 'text-slate-600', bg: 'bg-slate-50', dot: 'bg-slate-500' };
     }
 };
@@ -186,6 +186,58 @@ const OrderDetailsModal = ({ order, onClose, onUpdateStatus }) => {
                                 </div>
                             )}
                         </div>
+
+                        {order.supplier && (
+                            <div className="mb-8">
+                                <h3 className="text-[17px] font-semibold text-slate-800 mb-4 flex items-center gap-2">
+                                    <User className="w-[18px] h-[18px] text-blue-600" /> Supplier Details
+                                </h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5 bg-blue-50/40 p-5 rounded-2xl border border-blue-100/60">
+                                    <div className="flex flex-col gap-1.5">
+                                        <p className="text-[13px] font-semibold text-blue-800 tracking-wide">Supplier Name</p>
+                                        <div className="bg-white px-4 py-2.5 rounded-xl border border-blue-50 shadow-sm font-semibold text-slate-800 text-[14px]">
+                                            {order.supplier.name}
+                                            {order.supplier.supplier_code && <span className="ml-2 text-xs text-slate-500 font-medium font-mono bg-slate-100 px-1.5 py-0.5 rounded">{order.supplier.supplier_code}</span>}
+                                        </div>
+                                    </div>
+                                    
+                                    {(order.supplier.phone || order.supplier.email) && (
+                                        <div className="flex flex-col gap-1.5">
+                                            <p className="text-[13px] font-semibold text-blue-800 tracking-wide">Contact</p>
+                                            <div className="bg-white px-4 py-2.5 rounded-xl border border-blue-50 shadow-sm flex flex-col gap-1.5">
+                                                {order.supplier.phone && (
+                                                    <div className="flex items-center gap-2 text-[13px] text-slate-700">
+                                                        <Phone className="w-3.5 h-3.5 text-blue-500" /> {order.supplier.phone}
+                                                    </div>
+                                                )}
+                                                {order.supplier.email && (
+                                                    <div className="flex items-center gap-2 text-[13px] text-slate-700">
+                                                        <Mail className="w-3.5 h-3.5 text-blue-500" /> <span className="truncate">{order.supplier.email}</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {order.supplier.address && (
+                                        <div className="flex flex-col gap-1.5 md:col-span-2">
+                                            <p className="text-[13px] font-semibold text-blue-800 tracking-wide">Address & Tax</p>
+                                            <div className="bg-white px-4 py-2.5 rounded-xl border border-blue-50 shadow-sm flex flex-col gap-1.5">
+                                                <div className="flex items-start gap-2 text-[13px] text-slate-700">
+                                                    <MapPin className="w-3.5 h-3.5 text-blue-500 mt-0.5 shrink-0" />
+                                                    <span>{order.supplier.address}, {order.supplier.city}{order.supplier.state ? `, ${order.supplier.state}` : ''}</span>
+                                                </div>
+                                                {order.supplier.gst && (
+                                                    <div className="flex items-center gap-2 text-[13px] text-slate-700 mt-1">
+                                                        <FileText className="w-3.5 h-3.5 text-blue-500" /> <span className="font-medium text-slate-600 mr-1">GST:</span> {order.supplier.gst}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
 
                         {order.status === 'COMPLETED' && (order.tracking_number || order.booking_copy_url || order.invoice_copy_url) && (
                             <div className="mb-8">

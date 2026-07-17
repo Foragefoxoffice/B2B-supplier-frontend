@@ -114,6 +114,7 @@ const AdminSupplierProducts = () => {
   const [viewingProductImagesProduct, setViewingProductImagesProduct] = useState(null);
   const [isViewImagesModalOpen, setIsViewImagesModalOpen] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [isDownloadingImages, setIsDownloadingImages] = useState(false);
 
   // Redesign state variables
   const [searchQuery, setSearchQuery] = useState('');
@@ -578,6 +579,107 @@ const AdminSupplierProducts = () => {
     }
   };
 
+  const handleDownloadImagesZIP = async () => {
+    if (filteredProducts.length === 0) {
+      toast.error("No products match the current filters.");
+      return;
+    }
+
+    setIsDownloadingImages(true);
+    const toastId = toast.loading('Generating ZIP with images and prices...');
+    
+    try {
+      const JSZip = (await import('jszip')).default;
+      const { saveAs } = await import('file-saver');
+      
+      const zip = new JSZip();
+      
+      let imageCount = 0;
+      
+      for (const product of filteredProducts) {
+        if (!product.images || product.images.length === 0) continue;
+        
+        for (let i = 0; i < product.images.length; i++) {
+          const imgData = product.images[i];
+          const imageUrl = `${import.meta.env.VITE_API_URL || "http://localhost:5000"}${imgData.url}`;
+          
+          try {
+            const response = await fetch(imageUrl);
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            const blob = await response.blob();
+            
+            const img = new window.Image();
+            const imgLoadPromise = new Promise((resolve, reject) => {
+              img.onload = resolve;
+              img.onerror = () => reject(new Error(`Failed to load image: ${imageUrl}`));
+            });
+            
+            img.src = URL.createObjectURL(blob);
+            
+            await imgLoadPromise;
+            
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            
+            ctx.drawImage(img, 0, 0);
+            
+            const priceText = `RS.${parseFloat(product.price).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+            
+            const fontSize = Math.max(Math.floor(canvas.width / 12), 24);
+            ctx.font = `bold ${fontSize}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            
+            const padding = fontSize * 0.5;
+            const textMetrics = ctx.measureText(priceText);
+            const textWidth = textMetrics.width;
+            const textHeight = fontSize;
+            
+            const bgWidth = textWidth + (padding * 2);
+            const bgHeight = textHeight + padding;
+            const bgX = (canvas.width - bgWidth) / 2;
+            const bgY = canvas.height - bgHeight - (padding / 2);
+            
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+            ctx.fillRect(bgX, bgY, bgWidth, bgHeight);
+            
+            ctx.fillStyle = '#3B82F6';
+            ctx.fillText(priceText, canvas.width / 2, bgY + (bgHeight / 2) + (fontSize * 0.1));
+            
+            const canvasBlob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.9));
+            
+            const safeName = (product.name || 'product').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+            const fileName = `${product.product_code || 'sku'}_${safeName}_${i + 1}.jpg`;
+            zip.file(fileName, canvasBlob);
+            imageCount++;
+            
+          } catch (err) {
+            console.error(`Failed to process image ${i + 1} for product ${product.name}`, err);
+          }
+        }
+      }
+      
+      if (imageCount === 0) {
+        toast.error('No images found for the filtered products.', { id: toastId });
+        setIsDownloadingImages(false);
+        return;
+      }
+      
+      toast.loading(`Zipping ${imageCount} images...`, { id: toastId });
+      const content = await zip.generateAsync({ type: 'blob' });
+      saveAs(content, `product_images_${Date.now()}.zip`);
+      
+      toast.success(`Successfully downloaded ${imageCount} images!`, { id: toastId });
+    } catch (error) {
+      console.error('Error creating zip:', error);
+      toast.error('Failed to download images ZIP.', { id: toastId });
+    } finally {
+      setIsDownloadingImages(false);
+    }
+  };
+
   const handleExportCSV = () => {
     if (filteredProducts.length === 0) {
       toast.error("No products to export.");
@@ -812,6 +914,14 @@ const AdminSupplierProducts = () => {
               </p>
             </div>
             <div className="flex items-center gap-3">
+              <button
+                onClick={handleDownloadImagesZIP}
+                disabled={isDownloadingImages}
+                className="flex items-center px-4 py-1.5 border border-blue-200 text-blue-700 bg-blue-50 rounded-xl hover:bg-blue-100 transition-colors font-medium shadow-sm cursor-pointer disabled:opacity-50"
+              >
+                {isDownloadingImages ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Image className="h-4 w-4 mr-2 text-blue-500" />}
+                Download Images
+              </button>
               <button
                 onClick={handleExportCSV}
                 className="flex items-center px-4 py-1.5 border border-slate-200 text-slate-700 bg-white rounded-xl hover:bg-slate-50 transition-colors font-medium shadow-sm cursor-pointer"
@@ -1149,6 +1259,14 @@ const AdminSupplierProducts = () => {
               </p>
             </div>
             <div className="flex items-center gap-3">
+              <button
+                onClick={handleDownloadImagesZIP}
+                disabled={isDownloadingImages}
+                className="flex items-center px-4 py-2 border border-blue-200 text-blue-700 bg-blue-50 rounded-xl hover:bg-blue-100 transition-colors font-semibold shadow-xs cursor-pointer text-xs uppercase tracking-wider disabled:opacity-50"
+              >
+                {isDownloadingImages ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Image className="h-4 w-4 mr-2 text-blue-500" />}
+                Download Images
+              </button>
               <button
                 onClick={handleExportCSV}
                 className="flex items-center px-4 py-2 border border-slate-200 text-slate-700 bg-white rounded-xl hover:bg-slate-50 transition-colors font-semibold shadow-xs cursor-pointer text-xs uppercase tracking-wider"
