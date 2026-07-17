@@ -412,12 +412,12 @@ const OrderTracking = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.5 }}
-                className="bg-white rounded-2xl shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-slate-100 overflow-hidden relative min-h-[400px]"
+                className="bg-white rounded-2xl shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-slate-100 overflow-hidden relative"
             >
                 <AnimatePresence>
                 </AnimatePresence>
 
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto overflow-y-hidden no-scrollbar">
                     <table className="w-full text-left text-sm whitespace-nowrap">
                         <thead className="bg-slate-50/80 border-b border-slate-100 text-slate-600 font-medium text-[15px]">
                             <tr>
