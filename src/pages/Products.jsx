@@ -183,7 +183,7 @@ const Products = () => {
         label: 'Out of Stock',
         color: 'text-rose-600 bg-rose-50 border-rose-100'
       };
-    } else if (totalStock <= 10) {
+    } else if (totalStock <= (product.supplier?.low_stock_threshold !== undefined ? product.supplier.low_stock_threshold : 10)) {
       return {
         count: totalStock,
         label: 'Low Stock',
@@ -432,9 +432,10 @@ const Products = () => {
         ? p.images.reduce((sum, img) => sum + (img.quantity || 0), 0)
         : 0;
 
+      const threshold = p.supplier?.low_stock_threshold !== undefined ? p.supplier.low_stock_threshold : 10;
       if (totalStock === 0) {
         outOfStock++;
-      } else if (totalStock <= 10) {
+      } else if (totalStock <= threshold) {
         lowStock++;
       }
     });
@@ -494,7 +495,8 @@ const Products = () => {
           const totalStock = p.images && p.images.length > 0
             ? p.images.reduce((sum, img) => sum + (img.quantity || 0), 0)
             : 0;
-          return totalStock > 0 && totalStock <= 10;
+          const threshold = p.supplier?.low_stock_threshold !== undefined ? p.supplier.low_stock_threshold : 10;
+          return totalStock > 0 && totalStock <= threshold;
         })
       }
     });
@@ -524,8 +526,9 @@ const Products = () => {
       : 0;
 
     let stockStatus = '';
+    const threshold = product.supplier?.low_stock_threshold !== undefined ? product.supplier.low_stock_threshold : 10;
     if (totalStock === 0) stockStatus = 'OUT_OF_STOCK';
-    else if (totalStock <= 10) stockStatus = 'LOW_STOCK';
+    else if (totalStock <= threshold) stockStatus = 'LOW_STOCK';
     else stockStatus = 'IN_STOCK';
 
     const matchesStockStatus = selectedStockStatus === '' || stockStatus === selectedStockStatus;
@@ -1603,7 +1606,8 @@ const Products = () => {
                         placeholder="Color"
                         value={img.data.color || ''}
                         onChange={(e) => handleImageMetaChange(idx, 'color', e.target.value)}
-                        className="w-full flex-1 text-sm p-2 pl-3 outline-none text-slate-700 focus:bg-slate-50"
+                        disabled
+                        className="w-full flex-1 text-sm p-2 pl-3 outline-none text-slate-500 bg-slate-50 cursor-not-allowed"
                       />
                     </div>
                   </div>
@@ -1666,7 +1670,7 @@ const Products = () => {
                 <div className="lg:col-span-5 space-y-4">
                   {activeImage ? (
                     <div className="relative rounded-2xl overflow-hidden border border-slate-200/80 bg-slate-50 aspect-[3/4] group shadow-inner">
-                      <img
+                      <ImageZoomModal
                         src={`${import.meta.env.VITE_API_URL || "http://localhost:5000"}${activeImage.url}`}
                         alt={`${product.name?.toUpperCase()} - ${activeImage.color || 'Variant'}`}
                         className="h-full w-full object-cover transition-all duration-500 group-hover:scale-[1.02]"

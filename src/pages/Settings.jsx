@@ -3,10 +3,10 @@ import React, { useState, useRef } from 'react';
 import {
   Save, Mail, Settings as SettingsIcon,
   User, Lock, Camera, Phone, Shield,
-  Eye, EyeOff
+  Eye, EyeOff, Sliders, Minus, Plus, AlertTriangle, Sparkles
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { changePasswordApi, updateProfileApi } from '../commonApi/api';
+import { changePasswordApi, updateProfileApi, updateSupplierSettingsApi } from '../commonApi/api';
 
 const Settings = () => {
   const [activeTab, setActiveTab] = useState('profile');
@@ -38,6 +38,10 @@ const Settings = () => {
   });
 
   const [saving, setSaving] = useState(false);
+
+  // Supplier settings state
+  const [lowStockThreshold, setLowStockThreshold] = useState(user.low_stock_threshold !== undefined ? user.low_stock_threshold : 10);
+  const [mockQuantity, setMockQuantity] = useState(8);
 
   const handleProfileSave = async (e) => {
     e.preventDefault();
@@ -101,6 +105,26 @@ const Settings = () => {
     }
   };
 
+  const handleSupplierSettingsSave = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      const response = await updateSupplierSettingsApi(lowStockThreshold);
+      if (response.success) {
+        toast.success('Supplier settings updated successfully!');
+        const updatedUser = response.data;
+        // Keep the local avatarImage if any
+        updatedUser.profile_image = avatarImage;
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+        setUser(updatedUser);
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to update supplier settings');
+    } finally {
+      setSaving(false);
+    }
+  };
+
 
 
   const renderTabs = () => {
@@ -108,6 +132,10 @@ const Settings = () => {
       { id: 'profile', label: 'Profile Information', icon: User },
       { id: 'password', label: 'Change Password', icon: Lock },
     ];
+
+    if (user.role === 'SUPPLIER') {
+      tabs.push({ id: 'supplierSettings', label: 'Supplier Settings', icon: Sliders });
+    }
 
 
 
@@ -359,7 +387,196 @@ const Settings = () => {
     </div>
   );
 
+  const renderSupplierSettingsForm = () => {
+    // Helper to get preview badge style
+    const getPreviewBadge = (qty, threshold) => {
+      if (qty === 0) {
+        return {
+          label: 'Out of Stock',
+          style: 'bg-rose-600 text-white',
+          desc: 'Stock count is 0. The design will show as completely Out of Stock.'
+        };
+      } else if (qty <= threshold) {
+        return {
+          label: 'Low Stock',
+          style: 'bg-amber-500 text-white animate-pulse',
+          desc: `Stock is at or below your set threshold of ${threshold}. This triggers warning notifications and badges.`
+        };
+      } else {
+        return {
+          label: 'In Stock',
+          style: 'bg-emerald-600 text-white',
+          desc: `Stock is above your threshold of ${threshold}. The product will show normally as In Stock.`
+        };
+      }
+    };
 
+    const badgeInfo = getPreviewBadge(mockQuantity, lowStockThreshold);
+
+    return (
+      <div className="max-w-4xl animate-fade-in text-left">
+        <div className="mb-8">
+          <h3 className="text-[1.35rem] font-semibold text-slate-800">Supplier Settings</h3>
+          <p className="text-sm text-slate-500 mt-1">Configure your inventory parameters and alerts.</p>
+        </div>
+
+        {/* Info Tip banner */}
+        <div className="mb-8 p-4.5 bg-blue-50/50 border border-blue-100 rounded-2xl flex gap-3 text-left">
+          <AlertTriangle className="w-5.5 h-5.5 text-blue-500 shrink-0 mt-0.5" />
+          <div>
+            <h4 className="text-sm font-bold text-blue-900">Dynamic Inventory Alerting</h4>
+            <p className="text-xs text-blue-700/90 mt-1 leading-relaxed">
+              Updating your low stock quantity threshold dynamically adjusts how the system labels and alerts your products.
+              Your product catalog and supplier dashboard will reflect this custom limit immediately.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          {/* Form Side */}
+          <form onSubmit={handleSupplierSettingsSave} className="space-y-6 lg:col-span-7 font-sans">
+            <div className="bg-slate-50/50 border border-slate-200/65 p-6 rounded-2xl space-y-6">
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-1.5">
+                  Low Stock Alert Quantity
+                </label>
+                <p className="text-xs text-slate-500 mb-4 leading-relaxed">
+                  Choose the minimum quantity below which an item is considered low stock.
+                </p>
+
+                {/* Stepper Input */}
+                <div className="flex items-center gap-3 mb-5">
+                  <button
+                    type="button"
+                    onClick={() => setLowStockThreshold(prev => Math.max(1, prev - 1))}
+                    className="p-3 bg-white border border-slate-350 hover:bg-slate-100 rounded-xl transition-all cursor-pointer shadow-sm hover:scale-105 active:scale-95"
+                  >
+                    <Minus className="w-4 h-4 text-slate-700" />
+                  </button>
+                  <input
+                    type="number"
+                    min="1"
+                    max="999"
+                    value={lowStockThreshold}
+                    onChange={(e) => setLowStockThreshold(Math.max(1, parseInt(e.target.value) || 1))}
+                    className="w-24 text-center py-2.5 bg-white border border-slate-350 rounded-xl text-[16px] font-bold text-slate-800 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all duration-200"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setLowStockThreshold(prev => Math.min(999, prev + 1))}
+                    className="p-3 bg-white border border-slate-350 hover:bg-slate-100 rounded-xl transition-all cursor-pointer shadow-sm hover:scale-105 active:scale-95"
+                  >
+                    <Plus className="w-4 h-4 text-slate-700" />
+                  </button>
+                </div>
+
+                {/* Slider */}
+                <div className="space-y-2">
+                  <div className="flex justify-between text-xs text-slate-400 font-semibold px-0.5">
+                    <span>1 Unit</span>
+                    <span>50 Units</span>
+                    <span>100 Units</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="1"
+                    max="100"
+                    value={lowStockThreshold > 100 ? 100 : lowStockThreshold}
+                    onChange={(e) => setLowStockThreshold(parseInt(e.target.value))}
+                    className="w-full h-1.5 bg-slate-205 rounded-lg appearance-none cursor-pointer accent-blue-600 focus:outline-none"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-4">
+              <button
+                type="submit"
+                disabled={saving}
+                className="flex items-center px-7 py-3 bg-active-btn text-white rounded-xl hover:opacity-90 transition-all duration-200 font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed shadow-sm cursor-pointer"
+              >
+                <Save className="h-4 w-4 mr-2" />
+                {saving ? 'Saving...' : 'Save Settings'}
+              </button>
+            </div>
+          </form>
+
+          {/* Interactive Preview Side */}
+          <div className="lg:col-span-5 space-y-5">
+            <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs text-left relative overflow-hidden group">
+              <div className="absolute top-0 right-0 p-3 bg-blue-50/50 rounded-bl-2xl text-blue-600">
+                <Sparkles className="w-4.5 h-4.5 animate-bounce" />
+              </div>
+
+              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-1.5">
+                Live Preview Widget
+              </h4>
+
+              {/* Sample Product Visual */}
+              <div className="border border-slate-100 rounded-xl overflow-hidden bg-slate-50/50 mb-5">
+                <div className="aspect-[4/3] bg-gradient-to-tr from-slate-100 to-slate-200 relative flex items-center justify-center">
+                  {/* Decorative Design Preview */}
+                  <div className="absolute inset-0 bg-gradient-to-tr from-blue-600/10 to-transparent"></div>
+                  <span className="text-[10px] font-bold text-slate-400 tracking-widest uppercase">Sample Product Design</span>
+                  
+                  {/* Stock Level Badge */}
+                  <div className="absolute top-3 right-3">
+                    <span className={`inline-flex px-2.5 py-1 rounded-lg text-[10px] font-semibold tracking-wider uppercase transition-all duration-300 ${badgeInfo.style}`}>
+                      {mockQuantity} pcs
+                    </span>
+                  </div>
+
+                  {/* Stock Status Badge */}
+                  <div className="absolute bottom-3 left-3">
+                    <span className={`inline-flex px-2 py-0.5 rounded-md text-[8.5px] font-bold uppercase tracking-wider transition-all duration-300 shadow-sm ${badgeInfo.style}`}>
+                      {badgeInfo.label}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="p-4">
+                  <span className="text-[8px] font-bold text-blue-600 tracking-wider uppercase block mb-0.5">Classic Georgette</span>
+                  <h5 className="font-bold text-slate-800 text-xs uppercase tracking-wide truncate mb-1">MOCK SILK SAREE</h5>
+                  <div className="flex gap-2">
+                    <span className="text-[9px] text-slate-500 bg-white border border-slate-200 px-1.5 py-0.5 rounded-sm font-semibold uppercase">
+                      CODE: MOCK-01
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Interactive Controller */}
+              <div className="space-y-4 pt-1 border-t border-slate-100">
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="text-xs font-semibold text-slate-750">
+                      Test Inventory Count
+                    </label>
+                    <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">
+                      {mockQuantity} units
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="30"
+                    value={mockQuantity}
+                    onChange={(e) => setMockQuantity(parseInt(e.target.value))}
+                    className="w-full h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-blue-600 focus:outline-none"
+                  />
+                </div>
+
+                <div className="p-3 rounded-xl bg-slate-50/70 text-[11px] text-slate-500 leading-relaxed transition-all duration-300">
+                  <strong className="text-slate-700 block mb-1">Behavior:</strong>
+                  {badgeInfo.desc}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="max-w-[1200px] mx-auto pb-10">
@@ -381,6 +598,7 @@ const Settings = () => {
         <div className="flex-1 p-8 md:p-12">
           {activeTab === 'profile' && renderProfileForm()}
           {activeTab === 'password' && renderPasswordForm()}
+          {activeTab === 'supplierSettings' && renderSupplierSettingsForm()}
 
         </div>
       </div>

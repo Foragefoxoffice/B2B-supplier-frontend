@@ -191,6 +191,72 @@ const AdminDashboard = () => {
     ]
   });
 
+  const [supplierStatsData, setSupplierStatsData] = useState({
+    labels: [],
+    datasets: [
+      {
+        label: 'Completed Orders',
+        data: [],
+        backgroundColor: '#10B981',
+        barThickness: 18,
+      },
+      {
+        label: 'Pending Orders',
+        data: [],
+        backgroundColor: '#F59E0B',
+        barThickness: 18,
+      },
+      {
+        label: 'Rejected Orders',
+        data: [],
+        backgroundColor: '#EF4444',
+        barThickness: 18,
+      }
+    ]
+  });
+
+  const supplierStatsOptions = {
+    indexAxis: 'y',
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: true,
+        position: 'top',
+        labels: {
+          boxWidth: 8,
+          usePointStyle: true,
+          font: { size: 11, weight: '600' },
+          color: '#475569'
+        }
+      },
+      tooltip: {
+        mode: 'index',
+        intersect: false
+      }
+    },
+    scales: {
+      x: {
+        stacked: true,
+        beginAtZero: true,
+        ticks: {
+          color: '#94A3B8',
+          font: { size: 10, weight: '500' },
+          stepSize: 1
+        },
+        grid: {
+          color: '#F1F5F9',
+          drawBorder: false,
+        }
+      },
+      y: {
+        stacked: true,
+        ticks: { color: '#64748B', font: { size: 11, weight: '600' } },
+        grid: { display: false, drawBorder: false }
+      }
+    }
+  };
+
   useEffect(() => {
     fetchAdminDashboardData();
   }, []);
@@ -374,10 +440,42 @@ const AdminDashboard = () => {
           }
         ]
       });
+
+      // Compute Supplier breakdown stats (completed, pending, rejected)
+      if (stats && stats.supplierBreakdown && stats.supplierBreakdown.length > 0) {
+        const labels = stats.supplierBreakdown.map(s => s.name?.toUpperCase());
+        const completedData = stats.supplierBreakdown.map(s => s.completedCount);
+        const pendingData = stats.supplierBreakdown.map(s => s.pendingCount);
+        const rejectedData = stats.supplierBreakdown.map(s => s.rejectedCount);
+
+        setSupplierStatsData({
+          labels,
+          datasets: [
+            {
+              label: 'Completed Orders',
+              data: completedData,
+              backgroundColor: '#10B981',
+              barThickness: 18,
+            },
+            {
+              label: 'Pending Orders',
+              data: pendingData,
+              backgroundColor: '#F59E0B',
+              barThickness: 18,
+            },
+            {
+              label: 'Rejected Orders',
+              data: rejectedData,
+              backgroundColor: '#EF4444',
+              barThickness: 18,
+            }
+          ]
+        });
+      }
     }, 150);
 
     return () => clearTimeout(timer);
-  }, [orders]);
+  }, [orders, stats]);
 
   const lineChartOptions = {
     responsive: true,
@@ -684,6 +782,93 @@ const AdminDashboard = () => {
               trendValue={completedOrdersTrend.value}
             />
           </div>
+
+          {/* Supplier Statistics Section */}
+          {stats?.supplierBreakdown && stats.supplierBreakdown.length > 0 && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Left Column: Horizontal Bar Chart */}
+              <div className="bg-white p-6 rounded-2xl shadow-xs border border-slate-100 lg:col-span-1 flex flex-col justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800">Supplier Stats Overview</h3>
+                  <p className="text-xs text-slate-400 font-medium mt-1">Distribution of order fulfillment statuses</p>
+                </div>
+                <div className="h-[260px] w-full mt-6 relative">
+                  <Bar data={supplierStatsData} options={supplierStatsOptions} />
+                </div>
+              </div>
+
+              {/* Right Column: Detailed Performance Table */}
+              <div className="bg-white rounded-2xl shadow-xs border border-slate-100 overflow-hidden lg:col-span-2 flex flex-col justify-between">
+                <div className="p-6 border-b border-slate-100">
+                  <h3 className="text-lg font-semibold text-slate-800">Supplier Details & Fulfillment</h3>
+                  <p className="text-xs text-slate-400 font-medium mt-1">Detailed inventory size and order fulfillment metrics</p>
+                </div>
+                <div className="overflow-x-auto flex-1">
+                  <table className="w-full text-left border-collapse whitespace-nowrap">
+                    <thead>
+                      <tr className="bg-slate-50/60 border-b border-slate-100 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                        <th className="py-4 px-6">Supplier</th>
+                        <th className="py-4 px-6 text-center">Products</th>
+                        <th className="py-4 px-6 text-center">Completed</th>
+                        <th className="py-4 px-6 text-center">Pending</th>
+                        <th className="py-4 px-6 text-center">Rejected</th>
+                        <th className="py-4 px-6 text-right">Fulfillment Rate</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100/80">
+                      {stats.supplierBreakdown.map((sup) => {
+                        const totalOrders = sup.completedCount + sup.pendingCount + sup.rejectedCount;
+                        const rate = totalOrders > 0 ? Math.round((sup.completedCount / totalOrders) * 100) : 0;
+                        const initial = sup.name ? sup.name.charAt(0).toUpperCase() : 'S';
+                        
+                        return (
+                          <tr key={sup.id} className="hover:bg-slate-50/50 transition-colors">
+                            <td className="py-4 px-6 font-semibold text-slate-700">
+                              <div className="flex items-center gap-3">
+                                <div className="h-9 w-9 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-sm shrink-0 border border-blue-100">
+                                  {initial}
+                                </div>
+                                <span className="font-semibold text-slate-700 text-sm truncate max-w-[150px]" title={sup.name?.toUpperCase()}>
+                                  {sup.name?.toUpperCase()}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="py-4 px-6 text-center text-sm font-semibold text-slate-600">{sup.productsCount}</td>
+                            <td className="py-4 px-6 text-center">
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100">
+                                {sup.completedCount}
+                              </span>
+                            </td>
+                            <td className="py-4 px-6 text-center">
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-100">
+                                {sup.pendingCount}
+                              </span>
+                            </td>
+                            <td className="py-4 px-6 text-center">
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-100">
+                                {sup.rejectedCount}
+                              </span>
+                            </td>
+                            <td className="py-4 px-6 text-right">
+                              <div className="flex items-center justify-end gap-2.5">
+                                <div className="w-16 bg-slate-100 rounded-full h-1.5 overflow-hidden shrink-0">
+                                  <div 
+                                    className={`h-full rounded-full ${rate >= 75 ? 'bg-emerald-500' : rate >= 40 ? 'bg-amber-500' : 'bg-rose-500'}`} 
+                                    style={{ width: `${rate}%` }}
+                                  />
+                                </div>
+                                <span className="text-xs font-bold text-slate-700 w-8 text-right">{rate}%</span>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Charts Section */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

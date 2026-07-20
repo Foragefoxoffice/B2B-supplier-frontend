@@ -128,6 +128,7 @@ const SupplierDashboard = () => {
         setProducts(productsRes.data);
         
         let delay = 500;
+        const threshold = user.low_stock_threshold !== undefined ? user.low_stock_threshold : 10;
         productsRes.data.forEach(p => {
           if (p.images && p.images.length > 0) {
             p.images.forEach(img => {
@@ -139,7 +140,7 @@ const SupplierDashboard = () => {
                   showAnimatedToast('Out of Stock', `"${p.name?.toUpperCase()}" (${variantName}) is out of stock.`, '🛑', 'red');
                 }, delay);
                 delay += 400;
-              } else if (qty < 3) {
+              } else if (qty <= threshold) {
                 setTimeout(() => {
                   showAnimatedToast('Low Stock Alert', `"${p.name?.toUpperCase()}" (${variantName}) has low stock (${qty} left).`, '⚠️', 'orange');
                 }, delay);

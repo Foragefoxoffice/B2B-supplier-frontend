@@ -65,6 +65,11 @@ export const updateProfileApi = async (data) => {
   return response.data;
 };
 
+export const updateSupplierSettingsApi = async (lowStockThreshold) => {
+  const response = await api.put('/auth/supplier-settings', { low_stock_threshold: lowStockThreshold });
+  return response.data;
+};
+
 // ==========================
 // SUPPLIERS
 // ==========================

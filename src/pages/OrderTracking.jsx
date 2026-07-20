@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getOrdersApi, updateOrderStatusApi } from '../commonApi/api';
+import { getOrdersApi, updateOrderStatusApi, getSuppliersApi, deleteOrderApi } from '../commonApi/api';
 import { Search, Calendar, RefreshCcw, FileText, CheckCircle, Package, Truck, XCircle, Clock, ChevronRight, X, LocateFixedIcon, PackageOpen, ArrowUp, ArrowDown, Phone, MapPin } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -33,6 +33,33 @@ const OrderTracking = () => {
     const [selectedOrder, setSelectedOrder] = useState(null);
     const [confirmState, setConfirmState] = useState({ isOpen: false, orderId: null, status: null });
     const [cancelRemarks, setCancelRemarks] = useState('');
+    const [deleteConfirmState, setDeleteConfirmState] = useState({ isOpen: false, orderId: null });
+
+    const [suppliers, setSuppliers] = useState([]);
+    const [selectedSupplierId, setSelectedSupplierId] = useState('');
+    const [userRole, setUserRole] = useState(null);
+
+    useEffect(() => {
+        const userString = localStorage.getItem('user');
+        if (userString) {
+            const parsedUser = JSON.parse(userString);
+            setUserRole(parsedUser.role);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (userRole && userRole !== 'SUPPLIER') {
+            const fetchSuppliers = async () => {
+                try {
+                    const supData = await getSuppliersApi();
+                    if (supData.success) setSuppliers(supData.data);
+                } catch (error) {
+                    console.error('Error fetching suppliers:', error);
+                }
+            };
+            fetchSuppliers();
+        }
+    }, [userRole]);
 
     useEffect(() => {
         fetchOrders();
@@ -45,7 +72,7 @@ const OrderTracking = () => {
         };
         window.addEventListener('app_notification', handleNotification);
         return () => window.removeEventListener('app_notification', handleNotification);
-    }, [appliedSearch, statusFilter, appliedStartDate, appliedEndDate, page, limit]);
+    }, [appliedSearch, statusFilter, appliedStartDate, appliedEndDate, selectedSupplierId, page, limit]);
 
     useEffect(() => {
         setSelectedOrder(prev => {
@@ -66,6 +93,7 @@ const OrderTracking = () => {
                 status: statusFilter,
                 startDate: appliedStartDate,
                 endDate: appliedEndDate,
+                supplier_id: selectedSupplierId,
                 page,
                 limit
             });
@@ -97,6 +125,7 @@ const OrderTracking = () => {
         setEndDate('');
         setAppliedStartDate('');
         setAppliedEndDate('');
+        setSelectedSupplierId('');
         setPage(1);
     };
 
@@ -124,6 +153,27 @@ const OrderTracking = () => {
             toast.error('Failed to update order status.');
         } finally {
             setConfirmState({ isOpen: false, orderId: null, status: null });
+        }
+    };
+
+    const handleDeleteClick = (id) => {
+        setDeleteConfirmState({ isOpen: true, orderId: id });
+    };
+
+    const confirmDeleteOrder = async () => {
+        try {
+            const data = await deleteOrderApi(deleteConfirmState.orderId);
+            if (data.success) {
+                toast.success('Order deleted successfully!');
+                fetchOrders();
+            } else {
+                toast.error(data.message || 'Failed to delete order.');
+            }
+        } catch (error) {
+            console.error('Error deleting order:', error);
+            toast.error('Failed to delete order.');
+        } finally {
+            setDeleteConfirmState({ isOpen: false, orderId: null });
         }
     };
 
@@ -342,6 +392,24 @@ const OrderTracking = () => {
                     </SelectField>
                 </div>
 
+                {userRole !== 'SUPPLIER' && (
+                    <div className="w-48 relative group">
+                        <SelectField
+                            className="w-full py-2.5 bg-slate-50/50 hover:bg-slate-50 rounded-xl text-sm transition-all focus:ring-4 focus:ring-blue-500/10 focus:bg-white cursor-pointer"
+                            value={selectedSupplierId}
+                            onChange={(e) => {
+                                setSelectedSupplierId(e.target.value);
+                                setPage(1);
+                            }}
+                        >
+                            <option value="">All Suppliers</option>
+                            {suppliers.map(s => (
+                                <option key={s.id} value={s.id}>{s.name?.toUpperCase()}</option>
+                            ))}
+                        </SelectField>
+                    </div>
+                )}
+
                 <div className="relative flex items-center border border-slate-200 rounded-xl bg-slate-50/50 hover:bg-slate-50 focus-within:border-blue-500 focus-within:ring-4 focus-within:ring-blue-500/10 focus-within:bg-white transition-all overflow-hidden h-[42px] px-3 gap-2">
                     <Calendar className="w-4 h-4 text-slate-400 pointer-events-none" />
                     <input
@@ -554,6 +622,11 @@ const OrderTracking = () => {
                                                         <button onClick={() => setSelectedOrder(order)} className="px-4 py-2 bg-white border border-slate-200 text-blue-600 font-semibold text-xs rounded-xl hover:bg-blue-50 hover:border-blue-200 hover:shadow-sm transition-all active:scale-95">
                                                             Details
                                                         </button>
+                                                        {['SUPER_ADMIN', 'ADMIN'].includes(userRole) && (
+                                                            <button onClick={() => handleDeleteClick(order.id)} className="px-4 py-2 bg-white border border-rose-200 text-rose-600 font-semibold text-xs rounded-xl hover:bg-rose-50 hover:border-rose-300 hover:shadow-sm transition-all active:scale-95">
+                                                                Delete
+                                                            </button>
+                                                        )}
                                                     </div>
                                                 </td>
                                             </motion.tr>
@@ -578,6 +651,16 @@ const OrderTracking = () => {
                     totalItems={totalOrders}
                 />
             </motion.div>
+
+            <ConfirmModal
+                isOpen={deleteConfirmState.isOpen}
+                title="Delete Purchase Order"
+                message="Are you sure you want to delete this purchase order? This action cannot be undone."
+                onConfirm={confirmDeleteOrder}
+                onCancel={() => setDeleteConfirmState({ isOpen: false, orderId: null })}
+                confirmText="Delete"
+                confirmVariant="danger"
+            />
 
             <ConfirmModal
                 isOpen={confirmState.isOpen}

@@ -141,13 +141,6 @@ const AdminSupplierProducts = () => {
     trends: null
   });
 
-  // Automatically select the first supplier when loading suppliers list
-  useEffect(() => {
-    if (suppliers.length > 0 && !selectedSupplierId && userRole !== 'SUPPLIER') {
-      setSelectedSupplierId(suppliers[0].id.toString());
-    }
-  }, [suppliers, userRole, selectedSupplierId]);
-
   // Reset selected category and page when supplier changes
   useEffect(() => {
     setSelectedCategory('');
@@ -159,7 +152,7 @@ const AdminSupplierProducts = () => {
   // Get active categories for the selected supplier
   const getSupplierCategories = () => {
     if (userRole === 'SUPPLIER') return categories;
-    if (!selectedSupplierId) return [];
+    if (!selectedSupplierId) return categories;
 
     // Find all category IDs used by products of the selected supplier
     const activeCategoryIds = new Set(
@@ -211,7 +204,7 @@ const AdminSupplierProducts = () => {
         label: 'Out of Stock',
         color: 'text-rose-600 bg-rose-50 border-rose-100'
       };
-    } else if (totalStock <= 10) {
+    } else if (totalStock <= (product.supplier?.low_stock_threshold !== undefined ? product.supplier.low_stock_threshold : 10)) {
       return {
         count: totalStock,
         label: 'Low Stock',
@@ -448,53 +441,90 @@ const AdminSupplierProducts = () => {
 
   useEffect(() => {
     if (!allProducts) return;
-    const total = allProducts.length;
-    const active = allProducts.filter(p => p.status === 'APPROVED').length;
-    const draft = allProducts.filter(p => p.status === 'PENDING').length;
+
+    // Filter products for stats calculation based on ALL current filters
+    const statsProducts = allProducts.filter(product => {
+      const matchesSupplier = userRole === 'SUPPLIER' ||
+        selectedSupplierId === '' ||
+        product.supplier_id === parseInt(selectedSupplierId);
+
+      const matchesSearch = searchQuery === '' ||
+        product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        product.product_code.toLowerCase().includes(searchQuery.toLowerCase());
+
+      const matchesCategory = selectedCategory === '' ||
+        product.category_id === parseInt(selectedCategory);
+
+      let mappedStatus = '';
+      if (product.status === 'APPROVED') mappedStatus = 'ACTIVE';
+      else if (product.status === 'PENDING') mappedStatus = 'DRAFT';
+      else if (product.status === 'REJECTED') mappedStatus = 'INACTIVE';
+
+      const matchesStatus = selectedStatus === '' || mappedStatus === selectedStatus;
+
+      const totalStock = product.images && product.images.length > 0
+        ? product.images.reduce((sum, img) => sum + (img.quantity || 0), 0)
+        : 0;
+
+      let stockStatus = '';
+      const threshold = product.supplier?.low_stock_threshold !== undefined ? product.supplier.low_stock_threshold : 10;
+      if (totalStock === 0) stockStatus = 'OUT_OF_STOCK';
+      else if (totalStock <= threshold) stockStatus = 'LOW_STOCK';
+      else stockStatus = 'IN_STOCK';
+
+      const matchesStockStatus = selectedStockStatus === '' || stockStatus === selectedStockStatus;
+
+      return matchesSupplier && matchesSearch && matchesCategory && matchesStatus && matchesStockStatus;
+    });
+
+    const total = statsProducts.length;
+    const active = statsProducts.filter(p => p.status === 'APPROVED').length;
+    const draft = statsProducts.filter(p => p.status === 'PENDING').length;
 
     let outOfStock = 0;
     let lowStock = 0;
 
-    allProducts.forEach(p => {
+    statsProducts.forEach(p => {
       const totalStock = p.images && p.images.length > 0
         ? p.images.reduce((sum, img) => sum + (img.quantity || 0), 0)
         : 0;
 
+      const threshold = p.supplier?.low_stock_threshold !== undefined ? p.supplier.low_stock_threshold : 10;
       if (totalStock === 0) {
         outOfStock++;
-      } else if (totalStock <= 10) {
+      } else if (totalStock <= threshold) {
         lowStock++;
       }
     });
 
     const calculateTrend = (data, filterFn = () => true) => {
       if (!data || data.length === 0) return { trend: 'up', value: '0%' };
-      
+
       const now = new Date();
       const oneMonthAgo = new Date(now);
       oneMonthAgo.setMonth(now.getMonth() - 1);
-      
+
       const twoMonthsAgo = new Date(oneMonthAgo);
       twoMonthsAgo.setMonth(oneMonthAgo.getMonth() - 1);
-      
+
       let thisPeriodCount = 0; let lastPeriodCount = 0;
       data.forEach(item => {
         if (!filterFn(item)) return;
         const itemDate = new Date(item.created_at);
         if (isNaN(itemDate.getTime())) return;
-        
+
         if (itemDate > oneMonthAgo && itemDate <= now) {
           thisPeriodCount++;
         } else if (itemDate > twoMonthsAgo && itemDate <= oneMonthAgo) {
           lastPeriodCount++;
         }
       });
-      
+
       if (lastPeriodCount === 0) {
         if (thisPeriodCount === 0) return { trend: 'up', value: '0%' };
         return { trend: 'up', value: '100%' };
       }
-      
+
       const percentageChange = ((thisPeriodCount - lastPeriodCount) / lastPeriodCount) * 100;
       return {
         trend: percentageChange >= 0 ? 'up' : 'down',
@@ -503,21 +533,22 @@ const AdminSupplierProducts = () => {
     };
 
     const trends = {
-      total: calculateTrend(allProducts),
-      active: calculateTrend(allProducts, p => p.status === 'APPROVED'),
-      outOfStock: calculateTrend(allProducts, p => {
+      total: calculateTrend(statsProducts),
+      active: calculateTrend(statsProducts, p => p.status === 'APPROVED'),
+      outOfStock: calculateTrend(statsProducts, p => {
         const totalStock = p.images && p.images.length > 0 ? p.images.reduce((sum, img) => sum + (img.quantity || 0), 0) : 0;
         return totalStock === 0;
       }),
-      lowStock: calculateTrend(allProducts, p => {
+      lowStock: calculateTrend(statsProducts, p => {
         const totalStock = p.images && p.images.length > 0 ? p.images.reduce((sum, img) => sum + (img.quantity || 0), 0) : 0;
-        return totalStock > 0 && totalStock <= 10;
+        const threshold = p.supplier?.low_stock_threshold !== undefined ? p.supplier.low_stock_threshold : 10;
+        return totalStock > 0 && totalStock <= threshold;
       }),
-      draft: calculateTrend(allProducts, p => p.status === 'PENDING')
+      draft: calculateTrend(statsProducts, p => p.status === 'PENDING')
     };
 
     setStats({ total, active, outOfStock, lowStock, draft, trends });
-  }, [allProducts]);
+  }, [allProducts, selectedSupplierId, selectedCategory, searchQuery, selectedStatus, selectedStockStatus, userRole]);
 
   const filteredProducts = allProducts.filter(product => {
     const matchesSupplier = userRole === 'SUPPLIER' ||
@@ -543,8 +574,9 @@ const AdminSupplierProducts = () => {
       : 0;
 
     let stockStatus = '';
+    const threshold = product.supplier?.low_stock_threshold !== undefined ? product.supplier.low_stock_threshold : 10;
     if (totalStock === 0) stockStatus = 'OUT_OF_STOCK';
-    else if (totalStock <= 10) stockStatus = 'LOW_STOCK';
+    else if (totalStock <= threshold) stockStatus = 'LOW_STOCK';
     else stockStatus = 'IN_STOCK';
 
     const matchesStockStatus = selectedStockStatus === '' || stockStatus === selectedStockStatus;
@@ -587,90 +619,90 @@ const AdminSupplierProducts = () => {
 
     setIsDownloadingImages(true);
     const toastId = toast.loading('Generating ZIP with images and prices...');
-    
+
     try {
       const JSZip = (await import('jszip')).default;
       const { saveAs } = await import('file-saver');
-      
+
       const zip = new JSZip();
-      
+
       let imageCount = 0;
-      
+
       for (const product of filteredProducts) {
         if (!product.images || product.images.length === 0) continue;
-        
+
         for (let i = 0; i < product.images.length; i++) {
           const imgData = product.images[i];
           const imageUrl = `${import.meta.env.VITE_API_URL || "http://localhost:5000"}${imgData.url}`;
-          
+
           try {
             const response = await fetch(imageUrl);
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const blob = await response.blob();
-            
+
             const img = new window.Image();
             const imgLoadPromise = new Promise((resolve, reject) => {
               img.onload = resolve;
               img.onerror = () => reject(new Error(`Failed to load image: ${imageUrl}`));
             });
-            
+
             img.src = URL.createObjectURL(blob);
-            
+
             await imgLoadPromise;
-            
+
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
             canvas.width = img.width;
             canvas.height = img.height;
-            
+
             ctx.drawImage(img, 0, 0);
-            
+
             const priceText = `RS.${parseFloat(product.price).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
-            
+
             const fontSize = Math.max(Math.floor(canvas.width / 12), 24);
             ctx.font = `bold ${fontSize}px Arial`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            
+
             const padding = fontSize * 0.5;
             const textMetrics = ctx.measureText(priceText);
             const textWidth = textMetrics.width;
             const textHeight = fontSize;
-            
+
             const bgWidth = textWidth + (padding * 2);
             const bgHeight = textHeight + padding;
             const bgX = (canvas.width - bgWidth) / 2;
             const bgY = canvas.height - bgHeight - (padding / 2);
-            
+
             ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
             ctx.fillRect(bgX, bgY, bgWidth, bgHeight);
-            
+
             ctx.fillStyle = '#3B82F6';
             ctx.fillText(priceText, canvas.width / 2, bgY + (bgHeight / 2) + (fontSize * 0.1));
-            
+
             const canvasBlob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.9));
-            
+
             const safeName = (product.name || 'product').replace(/[^a-z0-9]/gi, '_').toLowerCase();
             const fileName = `${product.product_code || 'sku'}_${safeName}_${i + 1}.jpg`;
             zip.file(fileName, canvasBlob);
             imageCount++;
-            
+
           } catch (err) {
             console.error(`Failed to process image ${i + 1} for product ${product.name}`, err);
           }
         }
       }
-      
+
       if (imageCount === 0) {
         toast.error('No images found for the filtered products.', { id: toastId });
         setIsDownloadingImages(false);
         return;
       }
-      
+
       toast.loading(`Zipping ${imageCount} images...`, { id: toastId });
       const content = await zip.generateAsync({ type: 'blob' });
       saveAs(content, `product_images_${Date.now()}.zip`);
-      
+
       toast.success(`Successfully downloaded ${imageCount} images!`, { id: toastId });
     } catch (error) {
       console.error('Error creating zip:', error);
@@ -794,57 +826,6 @@ const AdminSupplierProducts = () => {
     setVariantQuantities(prev => ({ ...prev, [variantId]: val }));
   };
 
-  const handlePlaceBatchOrder = async (product, ordersArray, customRemarks = '') => {
-    if (!ordersArray || ordersArray.length === 0) {
-      toast.error('No items selected for ordering.');
-      return;
-    }
-
-    try {
-      setIsSubmitting(true);
-      setBatchOrderingState({ active: true, currentStep: 0, totalSteps: ordersArray.length });
-
-      let successCount = 0;
-
-      for (let i = 0; i < ordersArray.length; i++) {
-        const item = ordersArray[i];
-        const payload = {
-          product_id: product.id,
-          variant_id: item.variant.id,
-          quantity: item.quantity,
-          rate: product.price,
-          remarks: `Color: ${item.variant.color || 'Default'}${customRemarks ? ` | Notes: ${customRemarks}` : ''}`
-        };
-
-        setBatchOrderingState(prev => ({ ...prev, currentStep: i + 1 }));
-
-        const data = await createOrderApi(payload);
-        if (data.success) {
-          successCount++;
-        }
-      }
-
-      if (successCount > 0) {
-        if (product.status === 'PENDING') {
-          await approveProductApi(product.id, 'APPROVED');
-        }
-        toast.success(`Successfully placed ${successCount} purchase orders for ${product.name?.toUpperCase()}!`);
-        setVariantQuantities({});
-        fetchProducts();
-      } else {
-        toast.error('Failed to place orders.');
-      }
-    } catch (error) {
-      console.error('Error placing batch orders:', error);
-      toast.error('Failed to place purchase orders.');
-    } finally {
-      setIsSubmitting(false);
-      setBatchOrderingState({ active: false, currentStep: 0, totalSteps: 0 });
-    }
-  };
-
-
-
   const handleDelete = (id) => {
     setDeleteProductId(id);
     setShowDeleteConfirm(true);
@@ -917,7 +898,7 @@ const AdminSupplierProducts = () => {
               <button
                 onClick={handleDownloadImagesZIP}
                 disabled={isDownloadingImages}
-                className="flex items-center px-4 py-1.5 border border-blue-200 text-blue-700 bg-blue-50 rounded-xl hover:bg-blue-100 transition-colors font-medium shadow-sm cursor-pointer disabled:opacity-50"
+                className="flex items-center px-4 py-1.5 border border-blue-200 text-blue-700 bg-blue-50 rounded-xl hover:bg-blue-100 transition-colors font-medium shadow-xs cursor-pointer disabled:opacity-50"
               >
                 {isDownloadingImages ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Image className="h-4 w-4 mr-2 text-blue-500" />}
                 Download Images
@@ -1763,7 +1744,7 @@ const AdminSupplierProducts = () => {
                         alt={`Image ${idx}`}
                         className="w-full aspect-[3/4] object-cover"
                       />
-                      
+
                       <button
                         type="button"
                         onClick={() => handleRemoveImage(idx)}
@@ -1786,9 +1767,9 @@ const AdminSupplierProducts = () => {
                       )}
 
                       {idx === 0 && (
-                         <div className="absolute bottom-0 inset-x-0 bg-slate-600 text-white text-[11px] font-extrabold text-center py-1.5 uppercase tracking-wider border-t border-slate-500">
-                           FRONT
-                         </div>
+                        <div className="absolute bottom-0 inset-x-0 bg-slate-600 text-white text-[11px] font-extrabold text-center py-1.5 uppercase tracking-wider border-t border-slate-500">
+                          FRONT
+                        </div>
                       )}
                     </div>
 
@@ -1806,7 +1787,8 @@ const AdminSupplierProducts = () => {
                         placeholder="Color"
                         value={img.data.color || ''}
                         onChange={(e) => handleImageMetaChange(idx, 'color', e.target.value)}
-                        className="flex-1 text-sm p-2 pl-3 outline-none text-slate-700 focus:bg-slate-50"
+                        disabled
+                        className="flex-1 text-sm p-2 pl-3 outline-none text-slate-500 bg-slate-50 cursor-not-allowed"
                       />
                     </div>
                   </div>
@@ -1869,7 +1851,7 @@ const AdminSupplierProducts = () => {
                 <div className="lg:col-span-5 space-y-4">
                   {activeImage ? (
                     <div className="relative rounded-2xl overflow-hidden border border-slate-200/80 bg-slate-50 aspect-[3/4] group shadow-inner">
-                      <img
+                      <ImageZoomModal
                         src={`${import.meta.env.VITE_API_URL || "http://localhost:5000"}${activeImage.url}`}
                         alt={`${product.name?.toUpperCase()} - ${activeImage.color || 'Variant'}`}
                         className="h-full w-full object-cover transition-all duration-500 group-hover:scale-[1.02]"
