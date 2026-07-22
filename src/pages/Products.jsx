@@ -210,13 +210,13 @@ const Products = () => {
     if (!activeImage) return;
     const toastId = toast.loading('Preparing download...');
     try {
-      const imgUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}${activeImage.url}`;
+      const imgUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}${activeImage.url}?t=${new Date().getTime()}`;
       const img = new window.Image();
       img.crossOrigin = 'anonymous';
       img.src = imgUrl;
       await new Promise((resolve, reject) => {
         img.onload = resolve;
-        img.onerror = reject;
+        img.onerror = () => reject(new Error('Failed to load image for rendering (CORS/cache issue).'));
       });
 
       const canvas = document.createElement('canvas');
