@@ -227,6 +227,109 @@ const AdminSupplierProducts = () => {
     setIsViewImagesModalOpen(true);
   };
 
+  const handleDownloadImage = async (product, activeImage) => {
+    if (!activeImage) return;
+    const toastId = toast.loading('Preparing download...');
+    try {
+      const imgUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}${activeImage.url}`;
+      const img = new window.Image();
+      img.crossOrigin = 'anonymous';
+      img.src = imgUrl;
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = reject;
+      });
+
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const bannerHeight = 90;
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight + bannerHeight;
+
+      // Draw image
+      ctx.drawImage(img, 0, 0, img.naturalWidth, img.naturalHeight);
+
+      // Draw banner
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(0, img.naturalHeight, canvas.width, bannerHeight);
+
+      // Draw separator line
+      ctx.strokeStyle = '#334155';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(0, img.naturalHeight);
+      ctx.lineTo(canvas.width, img.naturalHeight);
+      ctx.stroke();
+
+      const purchaseRate = parseFloat(product.price || 0);
+      const gstVal = parseFloat(dynamicGst || 0);
+      const saleRate = purchaseRate * (1 + gstVal / 100);
+
+      const leftX = 24;
+      const rightX = canvas.width - 24;
+      const baseY = img.naturalHeight + 36;
+
+      // Product name (left side, top)
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = 'bold 16px Inter, system-ui, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(product.name?.toUpperCase() || '', leftX, baseY - 6);
+
+      // Supplier name (left side, bottom)
+      if (product.supplier?.name) {
+        ctx.fillStyle = '#64748b';
+        ctx.font = '13px Inter, system-ui, sans-serif';
+        ctx.fillText(product.supplier.name.toUpperCase(), leftX, baseY + 18);
+      }
+
+      // Purchase Rate label + value (right side)
+      ctx.textAlign = 'right';
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '12px Inter, system-ui, sans-serif';
+      ctx.fillText('Purchase Rate', rightX, baseY - 16);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 22px Inter, system-ui, sans-serif';
+      ctx.fillText(`\u20b9${purchaseRate.toLocaleString('en-IN')}`, rightX, baseY + 8);
+
+      // Sale Rate label + value (center-right)
+      const saleX = rightX - 200;
+      ctx.textAlign = 'right';
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '12px Inter, system-ui, sans-serif';
+      ctx.fillText('Sale Rate (incl. GST)', saleX, baseY - 16);
+      ctx.fillStyle = '#4ade80';
+      ctx.font = 'bold 22px Inter, system-ui, sans-serif';
+      ctx.fillText(`\u20b9${saleRate.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`, saleX, baseY + 8);
+
+      // Vertical divider between sale and purchase
+      ctx.strokeStyle = '#334155';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(saleX + 16, img.naturalHeight + 14);
+      ctx.lineTo(saleX + 16, img.naturalHeight + bannerHeight - 14);
+      ctx.stroke();
+
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          toast.error('Failed to generate image.', { id: toastId });
+          return;
+        }
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${product.product_code || product.name || 'product'}_${activeImage.color || 'variant'}.jpg`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        toast.success('Image downloaded!', { id: toastId });
+      }, 'image/jpeg', 0.95);
+    } catch (err) {
+      console.error('Download failed:', err);
+      toast.error('Failed to download image.', { id: toastId });
+    }
+  };
+
   const { register, handleSubmit, reset, formState: { errors } } = useForm();
 
   const handleFileChange = async (e) => {
@@ -1868,14 +1971,24 @@ const AdminSupplierProducts = () => {
                       )}
 
                       {/* Delete Action Overlay */}
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteImage(activeImage.id)}
-                        className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm text-red-500 p-2 rounded-full shadow-lg hover:bg-red-50 hover:text-red-600 transition-colors z-10"
-                        title="Delete this variant"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <div className="absolute top-4 right-4 flex items-center gap-2 z-10">
+                        <button
+                          type="button"
+                          onClick={() => handleDownloadImage(product, activeImage)}
+                          className="bg-white/90 backdrop-blur-sm text-slate-700 p-2 rounded-full shadow-lg hover:bg-blue-50 hover:text-blue-600 transition-colors cursor-pointer"
+                          title="Download image with rates"
+                        >
+                          <Download className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteImage(activeImage.id)}
+                          className="bg-white/90 backdrop-blur-sm text-red-500 p-2 rounded-full shadow-lg hover:bg-red-50 hover:text-red-600 transition-colors"
+                          title="Delete this variant"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
 
                       {/* Active variant tag overlay */}
                       <span className="absolute bottom-4 left-4 right-4 bg-navy-dark/95 backdrop-blur-xs text-white text-[13px] font-semibold py-2.5 px-3 rounded-xl inline-flex items-center justify-between border border-white/10 shadow-lg">
@@ -1949,7 +2062,7 @@ const AdminSupplierProducts = () => {
                     {/* Price and GST Card */}
                     <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4.5 flex items-center justify-between shadow-2xs">
                       <div>
-                        <span className="text-[11px] font-semibold text-slate-450 block mb-0.5">Wholesale Rate</span>
+                        <span className="text-[11px] font-semibold text-slate-450 block mb-0.5">Purchase Rate</span>
                         <span className="text-2xl font-semibold text-secondary tracking-tight">
                           ₹{parseFloat(product.price).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
                         </span>
@@ -1998,7 +2111,7 @@ const AdminSupplierProducts = () => {
                           </span>
                         </div>
                       )}
-                      
+
                       <div className="bg-slate-50/50 border border-slate-200 rounded-xl p-3 px-4 shadow-3xs col-span-2 sm:col-span-1 flex items-center justify-between">
                         <div>
                           <span className="text-[11px] font-semibold text-slate-500 block mb-0.5">Est. Sale Value (incl. GST)</span>
