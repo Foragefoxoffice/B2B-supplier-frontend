@@ -115,6 +115,7 @@ const AdminSupplierProducts = () => {
   const [isViewImagesModalOpen, setIsViewImagesModalOpen] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [isDownloadingImages, setIsDownloadingImages] = useState(false);
+  const [dynamicGst, setDynamicGst] = useState('');
 
   // Redesign state variables
   const [searchQuery, setSearchQuery] = useState('');
@@ -222,6 +223,7 @@ const AdminSupplierProducts = () => {
   const handleViewImagesClick = (product) => {
     setViewingProductImagesProduct(product);
     setSelectedImageIndex(0);
+    setDynamicGst(product.gst || '');
     setIsViewImagesModalOpen(true);
   };
 
@@ -1996,6 +1998,31 @@ const AdminSupplierProducts = () => {
                           </span>
                         </div>
                       )}
+                      
+                      <div className="bg-slate-50/50 border border-slate-200 rounded-xl p-3 px-4 shadow-3xs col-span-2 sm:col-span-1 flex items-center justify-between">
+                        <div>
+                          <span className="text-[11px] font-semibold text-slate-500 block mb-0.5">Est. Sale Value (incl. GST)</span>
+                          <span className="text-md font-semibold text-emerald-600 mt-0.5 block truncate">
+                            ₹{(parseFloat(product.price || 0) * (1 + parseFloat(dynamicGst || 0) / 100)).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                        <div className="flex flex-col items-end ml-2">
+                          <div className="relative flex items-center">
+                            <input
+                              type="number"
+                              min="0"
+                              max="100"
+                              value={dynamicGst}
+                              onChange={(e) => setDynamicGst(e.target.value)}
+                              className="w-14 py-0.5 pl-2 pr-3.5 text-xs font-semibold text-emerald-700 bg-white border border-emerald-200 rounded-md focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 text-right shadow-3xs"
+                              placeholder="0"
+                              style={{ WebkitAppearance: 'none', MozAppearance: 'textfield' }}
+                              title="Custom GST %"
+                            />
+                            <span className="absolute right-1.5 text-[10px] font-bold text-emerald-700">%</span>
+                          </div>
+                        </div>
+                      </div>
                     </div>
 
                     {/* Colors Available */}

@@ -14,15 +14,25 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
   const navigate = useNavigate();
   const [showSuccessLoader, setShowSuccessLoader] = useState(false);
 
-  // Redirect to dashboard if already logged in
+  // Redirect to dashboard if already logged in, otherwise load remembered email
   useEffect(() => {
     const token = localStorage.getItem('token');
     const userString = localStorage.getItem('user');
     if (token && userString) {
       navigate('/dashboard');
+    } else {
+      const savedRememberMe = localStorage.getItem('rememberMe') === 'true';
+      if (savedRememberMe) {
+        const savedEmail = localStorage.getItem('rememberedEmail');
+        if (savedEmail) {
+          setEmail(savedEmail);
+          setRememberMe(true);
+        }
+      }
     }
   }, [navigate]);
 
@@ -34,6 +44,13 @@ const Login = () => {
     try {
       const data = await loginApi({ email, password });
       if (data.success) {
+        if (rememberMe) {
+          localStorage.setItem('rememberedEmail', email);
+          localStorage.setItem('rememberMe', 'true');
+        } else {
+          localStorage.removeItem('rememberedEmail');
+          localStorage.removeItem('rememberMe');
+        }
         localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify(data.user));
         toast.success('Logged in successfully!');
@@ -226,6 +243,8 @@ const Login = () => {
                     id="remember-me"
                     name="remember-me"
                     type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
                     className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-slate-300 rounded cursor-pointer"
                   />
                   <label htmlFor="remember-me" className="ml-2.5 block text-sm text-slate-600 cursor-pointer select-none">
