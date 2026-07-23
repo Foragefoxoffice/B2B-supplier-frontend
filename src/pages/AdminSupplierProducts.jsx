@@ -812,7 +812,8 @@ const AdminSupplierProducts = () => {
 
       toast.loading(`Zipping ${imageCount} images...`, { id: toastId });
       const content = await zip.generateAsync({ type: 'blob' });
-      saveAs(content, `product_images_${Date.now()}.zip`);
+      const zipName = rateType === 'sale' ? `sales_rate_product_${Date.now()}.zip` : `Purchased_rate_product_${Date.now()}.zip`;
+      saveAs(content, zipName);
 
       toast.success(`Successfully downloaded ${imageCount} images!`, { id: toastId });
     } catch (error) {

@@ -2,10 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   Mail, Lock, EyeOff, Eye, ArrowRight,
-  Check, MapPin, FileText, Phone
+  Check, MapPin, FileText, Phone, Globe, Shield
 } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
-import { loginApi } from '../commonApi/api';
+import { loginApi, verifyLoginOtpApi } from '../commonApi/api';
 import toast from 'react-hot-toast';
 
 const Login = () => {
@@ -17,6 +17,9 @@ const Login = () => {
   const [rememberMe, setRememberMe] = useState(false);
   const navigate = useNavigate();
   const [showSuccessLoader, setShowSuccessLoader] = useState(false);
+  const [showOtpScreen, setShowOtpScreen] = useState(false);
+  const [otp, setOtp] = useState('');
+  const [isCheckingIp, setIsCheckingIp] = useState(false);
 
   // Redirect to dashboard if already logged in, otherwise load remembered email
   useEffect(() => {
@@ -38,11 +41,62 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsCheckingIp(true);
+    setLoading(true);
+    setError('');
+
+    const startTime = Date.now();
+    try {
+      const [data] = await Promise.all([
+        loginApi({ email, password }),
+        new Promise(resolve => setTimeout(resolve, 1500)) // minimum 1.5s delay for animation
+      ]);
+      
+      setIsCheckingIp(false);
+
+      if (data.success) {
+        if (data.requireOtp) {
+          toast.success(data.message);
+          setShowOtpScreen(true);
+          setLoading(false);
+          return;
+        }
+
+        if (rememberMe) {
+          localStorage.setItem('rememberedEmail', email);
+          localStorage.setItem('rememberMe', 'true');
+        } else {
+          localStorage.removeItem('rememberedEmail');
+          localStorage.removeItem('rememberMe');
+        }
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        toast.success('Logged in successfully!');
+        setShowSuccessLoader(true);
+        setTimeout(() => {
+          navigate('/dashboard');
+        }, 2500);
+      }
+    } catch (err) {
+      const elapsed = Date.now() - startTime;
+      if (elapsed < 1500) {
+        await new Promise(r => setTimeout(r, 1500 - elapsed));
+      }
+      setIsCheckingIp(false);
+      const errMsg = err.response?.data?.message || 'Login failed. Please try again.';
+      setError(errMsg);
+      toast.error(errMsg);
+      setLoading(false);
+    }
+  };
+
+  const handleOtpSubmit = async (e) => {
+    e.preventDefault();
     setLoading(true);
     setError('');
 
     try {
-      const data = await loginApi({ email, password });
+      const data = await verifyLoginOtpApi(email, otp);
       if (data.success) {
         if (rememberMe) {
           localStorage.setItem('rememberedEmail', email);
@@ -60,7 +114,7 @@ const Login = () => {
         }, 2500);
       }
     } catch (err) {
-      const errMsg = err.response?.data?.message || 'Login failed. Please try again.';
+      const errMsg = err.response?.data?.message || 'OTP verification failed.';
       setError(errMsg);
       toast.error(errMsg);
       setLoading(false);
@@ -187,93 +241,144 @@ const Login = () => {
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-5">
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">
-                  Email address
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                    <Mail className="h-5 w-5 text-slate-400" />
-                  </div>
-                  <input
-                    type="email"
-                    required
-                    className="block w-full pl-11 pr-4 py-3 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 transition-all outline-none text-slate-800 text-sm bg-slate-50 hover:bg-slate-100/50"
-                    placeholder="supplier@company.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">
-                  Password
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                    <Lock className="h-5 w-5 text-slate-400" />
-                  </div>
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    required
-                    className="block w-full pl-11 pr-12 py-3 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 transition-all outline-none text-slate-800 text-sm bg-slate-50 hover:bg-slate-100/50"
-                    placeholder="••••••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                  />
-                  <button
-                    type="button"
-                    className="absolute inset-y-0 right-0 pr-4 flex items-center"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? (
-                      <Eye className="h-5 w-5 text-slate-400 hover:text-slate-600" />
-                    ) : (
-                      <EyeOff className="h-5 w-5 text-slate-400 hover:text-slate-600" />
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between pt-1 pb-2">
-                <div className="flex items-center">
-                  <input
-                    id="remember-me"
-                    name="remember-me"
-                    type="checkbox"
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-slate-300 rounded cursor-pointer"
-                  />
-                  <label htmlFor="remember-me" className="ml-2.5 block text-sm text-slate-600 cursor-pointer select-none">
-                    Remember me
+            {!showOtpScreen ? (
+              <form onSubmit={handleSubmit} className="space-y-5">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">
+                    Email address
                   </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                      <Mail className="h-5 w-5 text-slate-400" />
+                    </div>
+                    <input
+                      type="email"
+                      required
+                      className="block w-full pl-11 pr-4 py-3 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 transition-all outline-none text-slate-800 text-sm bg-slate-50 hover:bg-slate-100/50"
+                      placeholder="supplier@company.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                    />
+                  </div>
                 </div>
-                <Link to="/forgot-password" className="text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors">
-                  Forgot password?
-                </Link>
-              </div>
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full flex items-center justify-center py-3 px-4 rounded-xl shadow-[0_4px_14px_0_rgb(37,99,235,0.39)] hover:shadow-[0_6px_20px_rgba(37,99,235,0.23)] text-md font-medium text-white bg-active-btn hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-600/20 transition-all disabled:opacity-70 disabled:cursor-not-allowed group cursor-pointer"
-              >
-                {loading ? (
-                  <span className="flex items-center gap-2">
-                    <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Signing in...
-                  </span>
-                ) : (
-                  <span>Sign in</span>
-                )}
-              </button>
-            </form>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">
+                    Password
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                      <Lock className="h-5 w-5 text-slate-400" />
+                    </div>
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      required
+                      className="block w-full pl-11 pr-12 py-3 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 transition-all outline-none text-slate-800 text-sm bg-slate-50 hover:bg-slate-100/50"
+                      placeholder="••••••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      className="absolute inset-y-0 right-0 pr-4 flex items-center"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? (
+                        <Eye className="h-5 w-5 text-slate-400 hover:text-slate-600" />
+                      ) : (
+                        <EyeOff className="h-5 w-5 text-slate-400 hover:text-slate-600" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-1 pb-2">
+                  <div className="flex items-center">
+                    <input
+                      id="remember-me"
+                      name="remember-me"
+                      type="checkbox"
+                      checked={rememberMe}
+                      onChange={(e) => setRememberMe(e.target.checked)}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-slate-300 rounded cursor-pointer"
+                    />
+                    <label htmlFor="remember-me" className="ml-2.5 block text-sm text-slate-600 cursor-pointer select-none">
+                      Remember me
+                    </label>
+                  </div>
+                  <Link to="/forgot-password" className="text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors">
+                    Forgot password?
+                  </Link>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full flex items-center justify-center py-3 px-4 rounded-xl shadow-[0_4px_14px_0_rgb(37,99,235,0.39)] hover:shadow-[0_6px_20px_rgba(37,99,235,0.23)] text-md font-medium text-white bg-active-btn hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-600/20 transition-all disabled:opacity-70 disabled:cursor-not-allowed group cursor-pointer"
+                >
+                  {loading ? (
+                    <span className="flex items-center gap-2">
+                      <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Signing in...
+                    </span>
+                  ) : (
+                    <span>Sign in</span>
+                  )}
+                </button>
+              </form>
+            ) : (
+              <form onSubmit={handleOtpSubmit} className="space-y-5">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">
+                    Enter Verification Code (OTP)
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      required
+                      maxLength="6"
+                      className="block w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-600 transition-all outline-none text-slate-800 text-sm bg-slate-50 hover:bg-slate-100/50 text-center tracking-[0.5em] font-mono text-lg"
+                      placeholder="------"
+                      value={otp}
+                      onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
+                    />
+                  </div>
+                  <p className="text-xs text-slate-500 mt-2 text-center">
+                    Please check your email for the 6-digit OTP code.
+                  </p>
+                </div>
+                <button
+                  type="submit"
+                  disabled={loading || otp.length !== 6}
+                  className="w-full flex items-center justify-center py-3 px-4 rounded-xl shadow-[0_4px_14px_0_rgb(37,99,235,0.39)] hover:shadow-[0_6px_20px_rgba(37,99,235,0.23)] text-md font-medium text-white bg-active-btn hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-600/20 transition-all disabled:opacity-70 disabled:cursor-not-allowed group cursor-pointer"
+                >
+                  {loading ? (
+                    <span className="flex items-center gap-2">
+                      <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Verifying...
+                    </span>
+                  ) : (
+                    <span>Verify & Login</span>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowOtpScreen(false);
+                    setOtp('');
+                  }}
+                  className="w-full mt-2 py-2 text-sm text-slate-500 hover:text-slate-700 font-medium transition-colors"
+                >
+                  Back to Login
+                </button>
+              </form>
+            )}
           </div>
 
           {/* Contact Support Section */}
@@ -420,6 +525,98 @@ const Login = () => {
                 />
               ))}
             </div>
+          </div>
+        </motion.div>
+      )}
+      {/* IP Checking Loader Overlay */}
+      {isCheckingIp && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-gradient-to-br from-[#0a1b3f] via-[#030a1c] to-[#01040d] text-white"
+        >
+          {/* Subtle background glows */}
+          <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-blue-500/10 blur-[130px] rounded-full pointer-events-none" />
+          <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-emerald-500/10 blur-[130px] rounded-full pointer-events-none" />
+
+          <div className="flex flex-col items-center max-w-sm text-center px-6 relative z-10">
+            
+            {/* Radar/Globe Animation Container */}
+            <div className="relative w-40 h-40 flex items-center justify-center mb-8">
+              {/* Pulsing rings */}
+              {[1, 2, 3].map((ring) => (
+                <motion.div
+                  key={ring}
+                  className="absolute inset-0 border-2 border-emerald-500/20 rounded-full"
+                  animate={{
+                    scale: [1, 1.5, 2],
+                    opacity: [0.8, 0.4, 0]
+                  }}
+                  transition={{
+                    duration: 2,
+                    repeat: Infinity,
+                    delay: ring * 0.6,
+                    ease: "easeOut"
+                  }}
+                />
+              ))}
+
+              {/* Center icon */}
+              <motion.div 
+                className="relative z-10 bg-emerald-500/20 p-5 rounded-full border border-emerald-500/30 shadow-[0_0_30px_rgba(16,185,129,0.2)]"
+              >
+                <Globe className="w-12 h-12 text-emerald-400" />
+              </motion.div>
+              
+              {/* Scanning line */}
+              <motion.div
+                className="absolute inset-0 z-20 rounded-full overflow-hidden"
+                animate={{ rotate: 360 }}
+                transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+              >
+                <div className="w-1/2 h-1/2 bg-gradient-to-br from-emerald-400/0 to-emerald-400/40 origin-bottom-right" style={{ clipPath: 'polygon(100% 100%, 0 0, 100% 0)' }}></div>
+              </motion.div>
+            </div>
+
+            <motion.h2
+              initial={{ y: 10, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.2 }}
+              className="text-2xl font-bold tracking-wide mb-2 text-white"
+            >
+              Security Check
+            </motion.h2>
+
+            <motion.p
+              initial={{ y: 10, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.3 }}
+              className="text-emerald-400/80 text-sm font-semibold uppercase tracking-wider mb-4"
+            >
+              Verifying IP Address
+            </motion.p>
+            
+            {/* Terminal-like text typing effect */}
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.5 }}
+              className="bg-black/50 border border-emerald-500/20 rounded-lg p-3 text-left w-full max-w-[250px]"
+            >
+               <div className="flex items-center gap-2 mb-1.5">
+                 <Shield className="w-3.5 h-3.5 text-emerald-500" />
+                 <span className="text-xs text-emerald-500/70 font-mono">Authenticating...</span>
+               </div>
+               <div className="h-1 w-full bg-slate-800 rounded-full overflow-hidden">
+                 <motion.div 
+                   className="h-full bg-emerald-500"
+                   initial={{ width: "0%" }}
+                   animate={{ width: "100%" }}
+                   transition={{ duration: 1.5, ease: "easeInOut" }}
+                 />
+               </div>
+            </motion.div>
           </div>
         </motion.div>
       )}
