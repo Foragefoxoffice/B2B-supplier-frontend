@@ -767,7 +767,7 @@ const AdminSupplierProducts = () => {
             let finalPrice = parseFloat(product.price || 0);
             if (rateType === 'sale') {
               const margin = parseFloat(localStorage.getItem(`productMargin_${product.id}`) || product.gst || 0);
-              finalPrice = finalPrice * (1 + margin / 100);
+              finalPrice = Math.round((finalPrice * (1 + margin / 100)) / 50) * 50;
             }
             const priceText = `RS.${finalPrice.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 
