@@ -116,6 +116,7 @@ const AdminSupplierProducts = () => {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [isDownloadingImages, setIsDownloadingImages] = useState(false);
   const [dynamicGst, setDynamicGst] = useState('');
+  const [manualSaleRate, setManualSaleRate] = useState('');
 
   // Redesign state variables
   const [searchQuery, setSearchQuery] = useState('');
@@ -264,7 +265,7 @@ const AdminSupplierProducts = () => {
 
       const purchaseRate = parseFloat(product.price || 0);
       const gstVal = parseFloat(dynamicGst || 0);
-      const saleRate = purchaseRate * (1 + gstVal / 100);
+      const saleRate = Math.round((purchaseRate * (1 + gstVal / 100)) / 50) * 50;
 
       const leftX = 24;
       const rightX = canvas.width - 24;
@@ -2130,9 +2131,27 @@ const AdminSupplierProducts = () => {
                       <div className="bg-slate-50/50 border border-slate-200 rounded-xl p-3 px-4 shadow-3xs col-span-2 sm:col-span-1 flex items-center justify-between">
                         <div>
                           <span className="text-[11px] font-semibold text-slate-500 block mb-0.5">Sale Rate</span>
-                          <span className="text-md font-semibold text-emerald-600 mt-0.5 block truncate">
-                            ₹{(parseFloat(product.price || 0) * (1 + parseFloat(dynamicGst || 0) / 100)).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
-                          </span>
+                          <div className="relative flex items-center mt-0.5">
+                            <span className="absolute left-1 text-md font-semibold text-emerald-600">₹</span>
+                            <input
+                              type="number"
+                              value={manualSaleRate !== '' ? manualSaleRate : Math.round((parseFloat(product.price || 0) * (1 + parseFloat(dynamicGst || 0) / 100)) / 50) * 50}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setManualSaleRate(val);
+                                const numVal = parseFloat(val);
+                                const purchaseRate = parseFloat(product.price || 0);
+                                if (!isNaN(numVal) && purchaseRate > 0) {
+                                  const newGst = ((numVal / purchaseRate) - 1) * 100;
+                                  setDynamicGst(newGst.toFixed(2));
+                                  localStorage.setItem(`productMargin_${product.id}`, newGst.toFixed(2));
+                                }
+                              }}
+                              onBlur={() => setManualSaleRate('')}
+                              className="w-24 py-0.5 pl-4 pr-1 text-md font-semibold text-emerald-600 bg-transparent border border-transparent rounded hover:border-emerald-200 focus:outline-none focus:border-emerald-500 focus:bg-white focus:shadow-3xs truncate"
+                              style={{ WebkitAppearance: 'none', MozAppearance: 'textfield' }}
+                            />
+                          </div>
                         </div>
                         <div className="flex flex-col items-end ml-2">
                           <div className="relative flex items-center">
@@ -2143,6 +2162,7 @@ const AdminSupplierProducts = () => {
                               value={dynamicGst}
                               onChange={(e) => {
                                 setDynamicGst(e.target.value);
+                                setManualSaleRate('');
                                 localStorage.setItem(`productMargin_${product.id}`, e.target.value);
                               }}
                               className="w-14 py-0.5 pl-2 pr-3.5 text-xs font-semibold text-emerald-700 bg-white border border-emerald-200 rounded-md focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 text-right shadow-3xs"
