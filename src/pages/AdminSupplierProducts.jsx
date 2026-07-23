@@ -223,7 +223,8 @@ const AdminSupplierProducts = () => {
   const handleViewImagesClick = (product) => {
     setViewingProductImagesProduct(product);
     setSelectedImageIndex(0);
-    setDynamicGst(product.gst || '');
+    const savedMargin = localStorage.getItem(`productMargin_${product.id}`);
+    setDynamicGst(savedMargin !== null ? savedMargin : (product.gst || ''));
     setIsViewImagesModalOpen(true);
   };
 
@@ -716,7 +717,7 @@ const AdminSupplierProducts = () => {
     }
   };
 
-  const handleDownloadImagesZIP = async () => {
+  const handleDownloadImagesZIP = async (rateType = 'purchase') => {
     if (filteredProducts.length === 0) {
       toast.error("No products match the current filters.");
       return;
@@ -762,7 +763,12 @@ const AdminSupplierProducts = () => {
 
             ctx.drawImage(img, 0, 0);
 
-            const priceText = `RS.${parseFloat(product.price).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+            let finalPrice = parseFloat(product.price || 0);
+            if (rateType === 'sale') {
+              const margin = parseFloat(localStorage.getItem(`productMargin_${product.id}`) || product.gst || 0);
+              finalPrice = finalPrice * (1 + margin / 100);
+            }
+            const priceText = `RS.${finalPrice.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 
             const fontSize = Math.max(Math.floor(canvas.width / 12), 24);
             ctx.font = `bold ${fontSize}px Arial`;
@@ -1001,12 +1007,20 @@ const AdminSupplierProducts = () => {
             </div>
             <div className="flex items-center gap-3">
               <button
-                onClick={handleDownloadImagesZIP}
+                onClick={() => handleDownloadImagesZIP('purchase')}
                 disabled={isDownloadingImages}
                 className="flex items-center px-4 py-1.5 border border-blue-200 text-blue-700 bg-blue-50 rounded-xl hover:bg-blue-100 transition-colors font-medium shadow-xs cursor-pointer disabled:opacity-50"
               >
                 {isDownloadingImages ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Image className="h-4 w-4 mr-2 text-blue-500" />}
-                Download Images
+                Download Purchase Images
+              </button>
+              <button
+                onClick={() => handleDownloadImagesZIP('sale')}
+                disabled={isDownloadingImages}
+                className="flex items-center px-4 py-1.5 border border-emerald-200 text-emerald-700 bg-emerald-50 rounded-xl hover:bg-emerald-100 transition-colors font-medium shadow-xs cursor-pointer disabled:opacity-50"
+              >
+                {isDownloadingImages ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Image className="h-4 w-4 mr-2 text-emerald-500" />}
+                Download Sale Images
               </button>
               <button
                 onClick={handleExportCSV}
@@ -1346,12 +1360,20 @@ const AdminSupplierProducts = () => {
             </div>
             <div className="flex items-center gap-3">
               <button
-                onClick={handleDownloadImagesZIP}
+                onClick={() => handleDownloadImagesZIP('purchase')}
                 disabled={isDownloadingImages}
                 className="flex items-center px-4 py-2 border border-blue-200 text-blue-700 bg-blue-50 rounded-xl hover:bg-blue-100 transition-colors font-semibold shadow-xs cursor-pointer text-xs uppercase tracking-wider disabled:opacity-50"
               >
                 {isDownloadingImages ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Image className="h-4 w-4 mr-2 text-blue-500" />}
-                Download Images
+                Download Purchase Images
+              </button>
+              <button
+                onClick={() => handleDownloadImagesZIP('sale')}
+                disabled={isDownloadingImages}
+                className="flex items-center px-4 py-2 border border-emerald-200 text-emerald-700 bg-emerald-50 rounded-xl hover:bg-emerald-100 transition-colors font-semibold shadow-xs cursor-pointer text-xs uppercase tracking-wider disabled:opacity-50"
+              >
+                {isDownloadingImages ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Image className="h-4 w-4 mr-2 text-emerald-500" />}
+                Download Sale Images
               </button>
               <button
                 onClick={handleExportCSV}
@@ -1974,14 +1996,6 @@ const AdminSupplierProducts = () => {
                       <div className="absolute top-4 right-4 flex items-center gap-2 z-10">
                         <button
                           type="button"
-                          onClick={() => handleDownloadImage(product, activeImage)}
-                          className="bg-white/90 backdrop-blur-sm text-slate-700 p-2 rounded-full shadow-lg hover:bg-blue-50 hover:text-blue-600 transition-colors cursor-pointer"
-                          title="Download image with rates"
-                        >
-                          <Download className="w-4 h-4" />
-                        </button>
-                        <button
-                          type="button"
                           onClick={() => handleDeleteImage(activeImage.id)}
                           className="bg-white/90 backdrop-blur-sm text-red-500 p-2 rounded-full shadow-lg hover:bg-red-50 hover:text-red-600 transition-colors"
                           title="Delete this variant"
@@ -2114,7 +2128,7 @@ const AdminSupplierProducts = () => {
 
                       <div className="bg-slate-50/50 border border-slate-200 rounded-xl p-3 px-4 shadow-3xs col-span-2 sm:col-span-1 flex items-center justify-between">
                         <div>
-                          <span className="text-[11px] font-semibold text-slate-500 block mb-0.5">Est. Sale Value (incl. GST)</span>
+                          <span className="text-[11px] font-semibold text-slate-500 block mb-0.5">Sale Rate</span>
                           <span className="text-md font-semibold text-emerald-600 mt-0.5 block truncate">
                             ₹{(parseFloat(product.price || 0) * (1 + parseFloat(dynamicGst || 0) / 100)).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
                           </span>
@@ -2126,7 +2140,10 @@ const AdminSupplierProducts = () => {
                               min="0"
                               max="100"
                               value={dynamicGst}
-                              onChange={(e) => setDynamicGst(e.target.value)}
+                              onChange={(e) => {
+                                setDynamicGst(e.target.value);
+                                localStorage.setItem(`productMargin_${product.id}`, e.target.value);
+                              }}
                               className="w-14 py-0.5 pl-2 pr-3.5 text-xs font-semibold text-emerald-700 bg-white border border-emerald-200 rounded-md focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 text-right shadow-3xs"
                               placeholder="0"
                               style={{ WebkitAppearance: 'none', MozAppearance: 'textfield' }}

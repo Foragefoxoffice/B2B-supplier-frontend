@@ -202,7 +202,8 @@ const Products = () => {
   const handleViewImagesClick = (product) => {
     setViewingProductImagesProduct(product);
     setSelectedImageIndex(0);
-    setDynamicGst(product.gst || '');
+    const savedMargin = localStorage.getItem(`productMargin_${product.id}`);
+    setDynamicGst(savedMargin !== null ? savedMargin : (product.gst || ''));
     setIsViewImagesModalOpen(true);
   };
 
@@ -1781,15 +1782,7 @@ const Products = () => {
                         className="h-full w-full object-cover transition-all duration-500 group-hover:scale-[1.02]"
                       />
 
-                      {/* Download button overlay */}
-                      <button
-                        type="button"
-                        onClick={() => handleDownloadImage(product, activeImage)}
-                        className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm text-slate-700 p-2 rounded-full shadow-lg hover:bg-blue-50 hover:text-blue-600 transition-colors z-10 cursor-pointer"
-                        title="Download image with rates"
-                      >
-                        <Download className="w-4 h-4" />
-                      </button>
+
 
                       {/* Active variant tag overlay */}
                       <span className="absolute bottom-4 left-4 right-4 bg-navy-dark/95 backdrop-blur-xs text-white text-[13px] font-semibold py-2.5 px-3 rounded-xl inline-flex items-center justify-between border border-white/10 shadow-lg">
@@ -1881,7 +1874,7 @@ const Products = () => {
                     {/* Specs Grid */}
                     <div className="grid grid-cols-2 gap-3.5">
                       <div className="bg-slate-50/50 border border-slate-200 rounded-xl p-3 px-4 shadow-3xs">
-                        <span className="text-[11px] font-semibold text-slate-500 block mb-0.5">Category</span>
+                        <span className="text-[12px] font-semibold text-slate-500 block mb-0.5">Category</span>
                         <span className="text-md font-semibold text-navy-dark mt-0.5 block truncate">
                           {product.category?.name || 'N/A'}
                         </span>
@@ -1914,7 +1907,7 @@ const Products = () => {
                       )}
                       <div className="bg-slate-50/50 border border-slate-200 rounded-xl p-3 px-4 shadow-3xs col-span-2 sm:col-span-1 flex items-center justify-between">
                         <div>
-                          <span className="text-[11px] font-semibold text-slate-500 block mb-0.5">Est. Sale Value (incl. GST)</span>
+                          <span className="text-[11px] font-semibold text-slate-500 block mb-0.5">Sale Rate</span>
                           <span className="text-md font-semibold text-emerald-600 mt-0.5 block truncate">
                             ₹{(parseFloat(product.price || 0) * (1 + parseFloat(dynamicGst || 0) / 100)).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
                           </span>
@@ -1926,7 +1919,10 @@ const Products = () => {
                               min="0"
                               max="100"
                               value={dynamicGst}
-                              onChange={(e) => setDynamicGst(e.target.value)}
+                              onChange={(e) => {
+                                setDynamicGst(e.target.value);
+                                localStorage.setItem(`productMargin_${product.id}`, e.target.value);
+                              }}
                               className="w-14 py-0.5 pl-2 pr-3.5 text-xs font-semibold text-emerald-700 bg-white border border-emerald-200 rounded-md focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 text-right shadow-3xs"
                               placeholder="0"
                               style={{ WebkitAppearance: 'none', MozAppearance: 'textfield' }}
